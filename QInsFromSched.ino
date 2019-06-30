@@ -4,32 +4,15 @@
 uint32_t reportCnt = 0;
 uint32_t start;
 
-void loop1(CoopTask& task)
-{
-	for (;;)
-	{
-		Serial.println("Loop1 - A");
-		task.yield();
-		Serial.println("Loop1 - B");
-		uint32_t start = millis();
-		task.delay(10000);
-		Serial.print("!!!Loop1 - C - ");
-		Serial.println(millis() - start);
-		task.delay(1000);
-		//break;
-	}
-}
-
-void loop3(CoopTask& task)
+void loop2(CoopTask& task)
 {
 	for (;;)
 	{
 		digitalWrite(LED_BUILTIN, LOW);
-		task.delay(1000);
-		digitalWrite(LED_BUILTIN, HIGH);
 		task.delay(2000);
+		digitalWrite(LED_BUILTIN, HIGH);
+		task.delay(3000);
 	}
-
 }
 
 
@@ -80,7 +63,7 @@ private:
 
 Button* button1;
 
-void loop4(CoopTask& task) {
+void loop3(CoopTask& task) {
 	int preCount = 0;
 	int count = 0;
 	for (;;)
@@ -101,6 +84,20 @@ void loop4(CoopTask& task) {
 	}
 }
 
+void loop4(CoopTask& task)
+{
+	for (;;) {
+		for (int i = 0; i < 8; ++i)
+		{
+			digitalWrite(LED_BUILTIN, LOW);
+			task.delay(125);
+			digitalWrite(LED_BUILTIN, HIGH);
+			task.delay(125);
+		}
+		task.delay(3000);
+	}
+}
+
 CoopTask* task1;
 CoopTask* task2;
 CoopTask* task3;
@@ -116,21 +113,21 @@ void setup()
 
 	button1 = new Button(BUTTON1);
 
-	task1 = new CoopTask(loop1);
-	//task2 = new CoopTask([](CoopTask& task)
-	//	{
-	//		Serial.println("Task2 - A");
-	//		task.yield();
-	//		Serial.println("Task2 - B");
-	//		uint32_t start = millis();
-	//		task.delay(6000);
-	//		Serial.print("!!!Task2 - C - ");
-	//		Serial.println(millis() - start);
-	//		task.exit();
-	//	});
+	task1 = new CoopTask([](CoopTask& task)
+		{
+			Serial.println("Task2 - A");
+			task.yield();
+			Serial.println("Task2 - B");
+			uint32_t start = millis();
+			task.delay(6000);
+			Serial.print("!!!Task2 - C - ");
+			Serial.println(millis() - start);
+			task.exit();
+		});
 
+	task2 = new CoopTask(loop2);
 	task3 = new CoopTask(loop3);
-	task4 = new CoopTask(loop4);
+	//task4 = new CoopTask(loop4);
 
 	//schedule_recurrent_function_us([]() { return task1->run(); }, 0);
 	//schedule_recurrent_function_us([]() { return task2->run(); }, 0);
@@ -143,9 +140,9 @@ void setup()
 void loop()
 {
 	task1->run();
-	//task2->run();
+	task2->run();
 	task3->run();
-	task4->run();
+	//task4->run();
 
 	if (reportCnt > 100000)
 	{

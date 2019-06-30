@@ -11,8 +11,8 @@ bool CoopTask::initialize()
 		if (init) return false;
 		auto stack = stacks.load() + 1;
 		stacks.store(stack);
-		auto sf = (char*)alloca(768 * stack);
-		sf[768 * stack - 1] = 1;
+		auto sf = (char*)alloca(0x400 * stack - 0x100);
+		sf[0] = 0xff;
 		init = true;
 		func(*this);
 		cont = false;
