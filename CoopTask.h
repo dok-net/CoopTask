@@ -28,14 +28,22 @@ public:
 		}
 		else cont = val > 1;
 	}
-};
 
-#define scheduler_yield(task) { if (!setjmp((task).envy)) { longjmp((task).env, 2); } }
-#define scheduler_exit(task) { longjmp((task).env, 0); }
-#define scheduler_delay(task, ms) \
-{ \
-	(task).delay_exp.store(millis() + (ms)); \
-	do { \
-		scheduler_yield(task); \
-	} while (static_cast<int32_t>((task).delay_exp.load() - millis()) > 0); \
-}
+	void yield()
+	{
+		if (!setjmp(envy)) { longjmp(env, 2); };
+	}
+
+	void delay(uint32_t ms)
+	{
+		delay_exp.store(millis() + (ms));
+		do {
+			yield();
+		} while (static_cast<int32_t>(delay_exp.load() - millis()) > 0);
+	}
+
+	void exit()
+	{
+		longjmp(env, 0);
+	}
+};

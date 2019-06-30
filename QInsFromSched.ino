@@ -7,33 +7,33 @@ CoopTask task1;
 void loop1(CoopTask& task)
 {
 	Serial.println("Loop1 - A");
-	scheduler_yield(task);
+	task.yield();
 	Serial.println("Loop1 - B");
-	scheduler_delay(task, 10000);
+	task.delay(10000);
 	Serial.println("!!!Loop1 - C");
-	scheduler_exit(task);
+	task.exit();
 }
 
 CoopTask task2;
 void loop2(CoopTask& task)
 {
 	Serial.println("Loop2 - A");
-	scheduler_yield(task);
+	task.yield();
 	Serial.println("Loop2 - B");
-	scheduler_delay(task, 5000);
+	task.delay(6000);
 	Serial.println("!!!Loop2 - C");
-	scheduler_exit(task);
+	task.exit();
 }
 
 CoopTask task3;
 void loop3(CoopTask& task)
 {
 	Serial.println("Loop3 - A");
-	scheduler_yield(task);
+	task.yield();
 	Serial.println("Loop3 - B");
-	scheduler_delay(task, 15000);
+	task.delay(15000);
 	Serial.println("!!!Loop3 - C");
-	scheduler_exit(task);
+	task.exit();
 }
 
 void setup()
