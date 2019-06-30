@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <functional>
 #include <atomic>
 #include <csetjmp>
@@ -5,33 +6,24 @@
 class CoopTask
 {
 public:
+	CoopTask(std::function< void(CoopTask&) > _func) : func(_func)
+	{
+		delay_exp.store(0);
+	}
+	static std::atomic<uint32_t> stacks;
 	jmp_buf env;
-	jmp_buf envy;
+	jmp_buf env_yield;
 	std::atomic<uint32_t> delay_exp;
 	bool cont = true;
 	bool init = false;
+	std::function< void(CoopTask&) > func;
 
-	void run(std::function< void(CoopTask&) > func, uint32_t stackOffset)
-	{
-		if (!cont) return;
-		auto val = setjmp(env);
-		if (!val) {
-			if (!init) {
-				auto sf = (char*)alloca(stackOffset);
-				sf[stackOffset - 1] = 1;
-				init = true;
-				func(*this);
-				cont = false;
-				return;
-			}
-			longjmp(envy, 0);
-		}
-		else cont = val > 1;
-	}
+	bool initialize();
+	bool run();
 
 	void yield()
 	{
-		if (!setjmp(envy)) { longjmp(env, 2); };
+		if (!setjmp(env_yield)) { longjmp(env, 2); };
 	}
 
 	void delay(uint32_t ms)
