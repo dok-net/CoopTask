@@ -1,17 +1,19 @@
 #include "CoopTask.h"
 #include <alloca.h>
 
-std::atomic<uint32_t> CoopTask::stacks(0);
+uint32_t CoopTask::stackframe(MAXSTACKFRAME);
 
 bool CoopTask::initialize()
 {
 	if (!cont || init) return false;
 	init = true;
-	auto stack = stacks.load() + 1;
-	stacks.store(stack);
-	auto sf = (char*)alloca(0x400 * stack - 0x100);
-	sf[0] = 0xff;
-	func(*this);
+	if (*this)
+	{
+		stackframe -= taskStackSize;
+		auto sf = (char*)alloca(stackframe);
+		sf[0] = 0xff;
+		func(*this);
+	}
 	cont = false;
 	return false;
 }
