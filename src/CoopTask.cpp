@@ -9,8 +9,7 @@ bool CoopTask::initialize()
 	init = true;
 	if (*this)
 	{
-		stackframe -= taskStackSize;
-		auto sf = (char*)alloca(stackframe);
+		auto sf = (char*)alloca(taskStack);
 		sf[0] = 0xff;
 		func(*this);
 	}
