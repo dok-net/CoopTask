@@ -21,21 +21,10 @@ public:
 	bool initialize();
 	bool run();
 
-	void yield()
-	{
-		if (!setjmp(env_yield)) { longjmp(env, 2); };
-	}
+	void yield();
+	void delay(uint32_t ms);
+	void exit();
 
-	void delay(uint32_t ms)
-	{
-		delay_exp.store(millis() + (ms));
-		do {
-			yield();
-		} while (static_cast<int32_t>(delay_exp.load() - millis()) > 0);
-	}
-
-	void exit()
-	{
-		longjmp(env, 0);
-	}
+protected:
+	uint32_t irqstate;
 };

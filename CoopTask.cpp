@@ -5,21 +5,15 @@ std::atomic<uint32_t> CoopTask::stacks(0);
 
 bool CoopTask::initialize()
 {
-	if (!cont) return false;
-	auto val = setjmp(env);
-	if (!val) {
-		if (init) return false;
-		auto stack = stacks.load() + 1;
-		stacks.store(stack);
-		auto sf = (char*)alloca(0x400 * stack - 0x100);
-		sf[0] = 0xff;
-		init = true;
-		func(*this);
-		cont = false;
-		return false;
-	}
-	else cont = val > 1;
-	return cont;
+	if (!cont || init) return false;
+	init = true;
+	auto stack = stacks.load() + 1;
+	stacks.store(stack);
+	auto sf = (char*)alloca(0x400 * stack - 0x100);
+	sf[0] = 0xff;
+	func(*this);
+	cont = false;
+	return false;
 }
 
 bool CoopTask::run()
@@ -28,8 +22,40 @@ bool CoopTask::run()
 	auto val = setjmp(env);
 	if (!val) {
 		if (!init) return initialize();
+		irqstate = xt_rsil(15);
 		longjmp(env_yield, 0);
 	}
-	else cont = val > 1;
+	else
+	{
+		xt_wsr_ps(irqstate);
+		cont = val > 1;
+	}
 	return cont;
+}
+
+void CoopTask::yield()
+{
+	if (!setjmp(env_yield))
+	{
+		irqstate = xt_rsil(15);
+		longjmp(env, 2);
+	}
+	else
+	{
+		xt_wsr_ps(irqstate);
+	}
+}
+
+void CoopTask::delay(uint32_t ms)
+{
+	delay_exp.store(millis() + ms);
+	do {
+		yield();
+	} while (static_cast<int32_t>(delay_exp.load() - millis()) > 0);
+}
+
+void CoopTask::exit()
+{
+	irqstate = xt_rsil(15);
+	longjmp(env, 0);
 }

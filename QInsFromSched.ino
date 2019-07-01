@@ -73,6 +73,7 @@ void loop3(CoopTask& task) {
 			delete button1;
 			button1 = nullptr;
 			return;
+			//task.exit();
 		}
 		if (preCount != count) {
 
@@ -113,21 +114,21 @@ void setup()
 
 	button1 = new Button(BUTTON1);
 
-	task1 = new CoopTask([](CoopTask& task)
-		{
-			Serial.println("Task2 - A");
-			task.yield();
-			Serial.println("Task2 - B");
-			uint32_t start = millis();
-			task.delay(6000);
-			Serial.print("!!!Task2 - C - ");
-			Serial.println(millis() - start);
-			task.exit();
-		});
+	//task1 = new CoopTask([](CoopTask& task)
+	//	{
+	//		Serial.println("Task1 - A");
+	//		task.yield();
+	//		Serial.println("Task1 - B");
+	//		uint32_t start = millis();
+	//		task.delay(6000);
+	//		Serial.print("!!!Task1 - C - ");
+	//		Serial.println(millis() - start);
+	//		task.exit();
+	//	});
 
 	task2 = new CoopTask(loop2);
 	task3 = new CoopTask(loop3);
-	//task4 = new CoopTask(loop4);
+	task4 = new CoopTask(loop4);
 
 	//schedule_recurrent_function_us([]() { return task1->run(); }, 0);
 	//schedule_recurrent_function_us([]() { return task2->run(); }, 0);
@@ -139,10 +140,10 @@ void setup()
 
 void loop()
 {
-	task1->run();
+	//task1->run();
 	task2->run();
 	task3->run();
-	//task4->run();
+	task4->run();
 
 	if (reportCnt > 100000)
 	{
