@@ -8,6 +8,7 @@ class CoopTask
 protected:
 	static constexpr uint32_t MAXSTACKFRAME = 0x1000;
 	static constexpr uint32_t DEFAULTTASKSTACKSIZE = 0x2c0;
+	void doYield(uint32_t val);
 
 public:
 	CoopTask(std::function< void(CoopTask&) > _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
@@ -35,7 +36,8 @@ public:
 	}
 
 	bool initialize();
-	bool run();
+	// @returns: 0: exited. 1: runnable. >1: sleeps for x ms.
+	uint32_t run();
 
 	void yield();
 	void delay(uint32_t ms);

@@ -171,23 +171,27 @@ void setup()
 				server.handleClient();
 				MDNS.update();
 				task.yield();
-			}}, 0x600);
+			}}, 0x610);
 	if (!*taskWeb) Serial.println("CoopTask Web out of stack");
 
-	taskBlink = new CoopTask(loopBlink, 0x2e0);
+	taskBlink = new CoopTask(loopBlink, 0x2f0);
 	if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
-	taskButton = new CoopTask(loopButton, 0x400);
+	taskButton = new CoopTask(loopButton, 0x410);
 	if (!*taskButton) Serial.println("CoopTask Button out of stack");
 
 	start = micros();
 }
 
+uint32_t taskWebRunnable = 1;
+uint32_t taskBlinkRunnable = 1;
+uint32_t taskButtonRunnable = 1;
+
 void loop()
 {
-	taskWeb->run();
-	taskBlink->run();
-	taskButton->run();
+	if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
+	if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
+	if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
 
 	if (reportCnt > 100000)
 	{

@@ -17,9 +17,9 @@ bool CoopTask::initialize()
 	return false;
 }
 
-bool CoopTask::run()
+uint32_t CoopTask::run()
 {
-	if (!cont) return false;
+	if (!cont) return 0;
 	auto val = setjmp(env);
 	if (!val) {
 		if (!init) return initialize();
@@ -31,15 +31,15 @@ bool CoopTask::run()
 		xt_wsr_ps(irqstate);
 		cont = val > 1;
 	}
-	return cont;
+	return !cont ? 0 : (val > 2 ? val : 1);
 }
 
-void CoopTask::yield()
+void CoopTask::doYield(uint32_t val)
 {
 	if (!setjmp(env_yield))
 	{
 		irqstate = xt_rsil(15);
-		longjmp(env, 2);
+		longjmp(env, val);
 	}
 	else
 	{
@@ -47,12 +47,19 @@ void CoopTask::yield()
 	}
 }
 
+void CoopTask::yield()
+{
+	doYield(2);
+}
+
 void CoopTask::delay(uint32_t ms)
 {
 	delay_exp.store(millis() + ms);
+	int32_t rem = static_cast<int32_t>(delay_exp.load() - millis());
 	do {
-		yield();
-	} while (static_cast<int32_t>(delay_exp.load() - millis()) > 0);
+		doYield(rem > 2 ? rem : 2);
+		rem = static_cast<int32_t>(delay_exp.load() - millis());
+	} while (rem > 0);
 }
 
 void CoopTask::exit()
