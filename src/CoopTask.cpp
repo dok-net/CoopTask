@@ -21,6 +21,12 @@ bool CoopTask::initialize()
 uint32_t CoopTask::run()
 {
 	if (!cont) return 0;
+	if (delayed)
+	{
+		int32_t delay_rem = static_cast<int32_t>(delay_exp - millis());
+		if (delay_rem > 0) return delay_rem;
+		delayed = false;
+	}
 	auto val = setjmp(env);
 	if (!val) {
 		if (!init) return initialize();
@@ -49,11 +55,9 @@ void CoopTask::yield()
 void CoopTask::delay(uint32_t ms)
 {
 	delay_exp = millis() + ms;
-	int32_t rem = static_cast<int32_t>(delay_exp - millis());
-	do {
-		doYield(rem > 2 ? rem : 2);
-		rem = static_cast<int32_t>(delay_exp - millis());
-	} while (rem > 0);
+	delayed = true;
+	// CoopTask::run() sleeps task until delay_exp is reached
+	doYield(ms > 2 ? ms : 2);
 }
 
 void CoopTask::exit()

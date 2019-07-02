@@ -4,7 +4,7 @@
     "keywords": [
       "multitasking"
     ],
-    "description": "ESP8266 library for creating multiple cooperative tasks like Arduino Scheduler",
+    "description": "ESP8266/ESP32 library for creating multiple cooperative tasks like Arduino Scheduler",
     "repository":
     {
         "type": "git",

@@ -4,7 +4,11 @@
 class CoopTask
 {
 protected:
+#ifdef ESP32
+	static constexpr uint32_t MAXSTACKFRAME = 0x1a00;
+#else
 	static constexpr uint32_t MAXSTACKFRAME = 0x1000;
+#endif
 	static constexpr uint32_t DEFAULTTASKSTACKSIZE = 0x2c0;
 	void doYield(uint32_t val);
 
@@ -25,8 +29,9 @@ public:
 	jmp_buf env;
 	jmp_buf env_yield;
 	uint32_t delay_exp;
-	bool cont = true;
 	bool init = false;
+	bool cont = true;
+	bool delayed = false;
 
 	operator bool() {
 		return taskStack;
