@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <functional>
-#include <atomic>
 #include <csetjmp>
 
 class CoopTask
@@ -12,9 +11,8 @@ protected:
 
 public:
 	CoopTask(std::function< void(CoopTask&) > _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
-		func(_func)
+		func(_func), delay_exp(0)
 	{
-		delay_exp.store(0);
 		if (stackframe > stackSize + DEFAULTTASKSTACKSIZE)
 		{
 			stackframe -= stackSize;
@@ -27,7 +25,7 @@ public:
 	uint32_t taskStack;
 	jmp_buf env;
 	jmp_buf env_yield;
-	std::atomic<uint32_t> delay_exp;
+	uint32_t delay_exp;
 	bool cont = true;
 	bool init = false;
 

@@ -54,11 +54,11 @@ void CoopTask::yield()
 
 void CoopTask::delay(uint32_t ms)
 {
-	delay_exp.store(millis() + ms);
-	int32_t rem = static_cast<int32_t>(delay_exp.load() - millis());
+	delay_exp = millis() + ms;
+	int32_t rem = static_cast<int32_t>(delay_exp - millis());
 	do {
 		doYield(rem > 2 ? rem : 2);
-		rem = static_cast<int32_t>(delay_exp.load() - millis());
+		rem = static_cast<int32_t>(delay_exp - millis());
 	} while (rem > 0);
 }
 
