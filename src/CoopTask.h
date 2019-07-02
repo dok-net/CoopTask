@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <functional>
 #include <csetjmp>
 
