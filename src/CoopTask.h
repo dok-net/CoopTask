@@ -16,7 +16,7 @@ public:
 	CoopTask(std::function< void(CoopTask&) > _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 		func(_func), delay_exp(0)
 	{
-		if (stackframe > stackSize + DEFAULTTASKSTACKSIZE)
+		if (stackframe >= stackSize + DEFAULTTASKSTACKSIZE)
 		{
 			stackframe -= stackSize;
 			taskStack = stackframe;
