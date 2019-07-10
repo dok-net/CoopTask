@@ -1,6 +1,5 @@
 #include <CoopTask.h>
 //#include <Schedule.h>
-#include <FunctionalInterrupt.h>
 
 #ifdef ESP8266
 #include <ESP8266WiFi.h>
@@ -37,7 +36,7 @@ class Button {
 public:
 	Button(uint8_t reqPin) : PIN(reqPin) {
 		pinMode(PIN, INPUT_PULLUP);
-		attachInterrupt(PIN, std::bind(&Button::buttonIsr, this), FALLING);
+		attachInterruptArg(PIN, Button::buttonIsr_static, this, FALLING);
 	};
 	~Button() {
 		detachInterrupt(PIN);
@@ -48,8 +47,8 @@ public:
 		pressed = true;
 	}
 
-	static void IRAM_ATTR buttonIsr_static(Button* const self) {
-		self->buttonIsr();
+	static void IRAM_ATTR buttonIsr_static(void* const self) {
+		reinterpret_cast<Button*>(self)->buttonIsr();
 	}
 
 	uint32_t checkPressed() {
@@ -66,8 +65,6 @@ private:
 	volatile bool pressed = false;
 };
 
-Button* button1;
-
 void loopBlink(CoopTask& task)
 {
 	for (;;)
@@ -80,12 +77,14 @@ void loopBlink(CoopTask& task)
 	task.exit();
 }
 
+Button* button1;
+
 void loopButton(CoopTask& task) {
 	int preCount = 0;
 	int count = 0;
 	for (;;)
 	{
-		if (nullptr != button1 && 40 < (count = button1->checkPressed())) {
+		if (nullptr != button1 && 8000 < (count = button1->checkPressed())) {
 			Serial.println(count);
 			delete button1;
 			button1 = nullptr;
@@ -101,11 +100,6 @@ void loopButton(CoopTask& task) {
 	}
 	task.exit();
 }
-
-CoopTask* taskWeb;
-CoopTask* taskText;
-CoopTask* taskBlink;
-CoopTask* taskButton;
 
 void handleRoot() {
 	server.send(200, "text/plain", "hello from esp8266!");
@@ -139,6 +133,11 @@ void handleNotFound() {
 //	}
 //	return false;
 //}
+
+CoopTask* taskWeb;
+CoopTask* taskText;
+CoopTask* taskBlink;
+CoopTask* taskButton;
 
 void setup()
 {
@@ -174,11 +173,7 @@ void setup()
 
 	Serial.println("Scheduler test");
 
-	pinMode(LED_BUILTIN, OUTPUT);
-
-	button1 = new Button(BUTTON1);
-
-	taskWeb = new CoopTask([](CoopTask& task)
+	taskWeb = new CoopTask(F("Web"), [](CoopTask& task)
 		{
 			for (;;)
 			{
@@ -187,11 +182,11 @@ void setup()
 				MDNS.update();
 #endif
 				task.yield();
-			}}, 0x620);
-	if (!*taskWeb) Serial.println("CoopTask Web out of stack");
+			}}, 0x720);
+	if (!*taskWeb) Serial.println(F("CoopTask Web out of stack"));
 
 #ifdef ESP32
-	taskText = new CoopTask([](CoopTask& task)
+	taskText = new CoopTask(F("Text"), [](CoopTask& task)
 		{
 			Serial.println("Task1 - A");
 			task.yield();
@@ -202,13 +197,18 @@ void setup()
 			Serial.println(millis() - start);
 			task.exit();
 		});
+	if (!*taskText) Serial.println(F("CoopTask Text out of stack"));
 #endif
 
-	taskBlink = new CoopTask(loopBlink, 0x2f0);
-	if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
+	pinMode(LED_BUILTIN, OUTPUT);
 
-	taskButton = new CoopTask(loopButton, 0x410);
-	if (!*taskButton) Serial.println("CoopTask Button out of stack");
+	//taskBlink = new CoopTask(F("Blink"), loopBlink, 0x310);
+	//if (!*taskBlink) Serial.println(F("CoopTask Blink out of stack"));
+
+	button1 = new Button(BUTTON1);
+
+	taskButton = new CoopTask(F("Button"), loopButton, 0x600);
+	if (!*taskButton) Serial.println(F("CoopTask Button out of stack"));
 
 	//schedule_recurrent_function_us([]() { return schedWrap(taskBlink); }, 0);
 
@@ -226,7 +226,7 @@ void loop()
 #ifdef ESP32
 	if (taskTextRunnable != 0) taskTextRunnable = taskText->run();
 #endif
-	if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
+	//if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
 	if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
 
 	if (reportCnt > 100000)

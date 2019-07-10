@@ -1,8 +1,24 @@
 #include "CoopTask.h"
 #include <alloca.h>
-#include <Arduino.h>
 
-uint32_t CoopTask::stackframe(MAXSTACKFRAME);
+char* CoopTask::coopStackTop = 0;
+
+CoopTask::operator bool()
+{
+	if (taskStackTop) return true;
+	char* bp;
+	if (!coopStackTop)
+	{
+		coopStackTop = reinterpret_cast<char*>(&bp) - MAXSTACKSPACE;
+	}
+	bp = coopStackTop + taskStackSize;
+	if (reinterpret_cast<char*>(&bp) - bp >= static_cast<int32_t>(DEFAULTTASKSTACKSIZE))
+	{
+		taskStackTop = coopStackTop;
+		coopStackTop = bp;
+	}
+	return taskStackTop;
+}
 
 bool CoopTask::initialize()
 {
@@ -10,8 +26,8 @@ bool CoopTask::initialize()
 	init = true;
 	if (*this)
 	{
-		auto sf = (char*)alloca(taskStack);
-		sf[0] = 0xff;
+		char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize)));
+		*reinterpret_cast<uint32_t*>(taskStackTop) = STACKCOOKIE;
 		func(*this);
 	}
 	cont = false;
@@ -34,6 +50,11 @@ uint32_t CoopTask::run()
 	}
 	else
 	{
+		if (*reinterpret_cast<uint32_t*>(taskStackTop) != STACKCOOKIE)
+		{
+			printf("FATAL ERROR: CoopTask %s stack overflow\n", name().c_str());
+			std::abort();
+		}
 		cont = val > 1;
 	}
 	return !cont ? 0 : (val > 2 ? val : 1);
