@@ -1,7 +1,8 @@
 #include "CoopTask.h"
 #include <alloca.h>
 
-char* CoopTask::coopStackTop = 0;
+char* CoopTask::coopStackTop = nullptr;
+char* CoopTask::loopStackTop = nullptr;
 
 CoopTask::operator bool()
 {
@@ -28,6 +29,8 @@ bool CoopTask::initialize()
 	{
 		char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize)));
 		*reinterpret_cast<uint32_t*>(taskStackTop) = STACKCOOKIE;
+		loopStackTop = bp;
+		*reinterpret_cast<uint32_t*>(loopStackTop) = STACKCOOKIE;
 		func(*this);
 	}
 	cont = false;
@@ -46,6 +49,11 @@ uint32_t CoopTask::run()
 	auto val = setjmp(env);
 	if (!val) {
 		if (!init) return initialize();
+		if (*reinterpret_cast<uint32_t*>(loopStackTop) != STACKCOOKIE)
+		{
+			printf("FATAL ERROR: loop() stack overflow\n");
+			std::abort();
+		}
 		longjmp(env_yield, 0);
 	}
 	else

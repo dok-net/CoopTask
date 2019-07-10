@@ -14,6 +14,7 @@ protected:
 	static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
 	void doYield(uint32_t val);
 	static char* coopStackTop;
+	static char* loopStackTop;
 public:
 	CoopTask(const String& name, std::function< void(CoopTask&) > _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 		taskName(name), func(_func), taskStackSize(stackSize), delay_exp(0)
