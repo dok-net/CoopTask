@@ -7,10 +7,11 @@ class CoopTask
 protected:
 #ifdef ESP32
 	static constexpr uint32_t MAXSTACKSPACE = 0x1a00;
+	static constexpr uint32_t DEFAULTTASKSTACKSIZE = 0x680;
 #else
 	static constexpr uint32_t MAXSTACKSPACE = 0xfe0;
+	static constexpr uint32_t DEFAULTTASKSTACKSIZE = 0x540;
 #endif
-	static constexpr uint32_t DEFAULTTASKSTACKSIZE = 0x280;
 	static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
 	void doYield(uint32_t val);
 	static char* coopStackTop;

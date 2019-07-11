@@ -134,10 +134,9 @@ void handleNotFound() {
 //	return false;
 //}
 
-CoopTask* taskWeb;
-CoopTask* taskText;
-CoopTask* taskBlink;
 CoopTask* taskButton;
+CoopTask* taskBlink;
+CoopTask* taskText;
 
 void setup()
 {
@@ -173,17 +172,17 @@ void setup()
 
 	Serial.println("Scheduler test");
 
-	taskWeb = new CoopTask(F("Web"), [](CoopTask& task)
-		{
-			for (;;)
-			{
-				server.handleClient();
-#ifdef ESP8266
-				MDNS.update();
-#endif
-				task.yield();
-			}}, 0x720);
-	if (!*taskWeb) Serial.println(F("CoopTask Web out of stack"));
+	pinMode(LED_BUILTIN, OUTPUT);
+
+	button1 = new Button(BUTTON1);
+
+	taskButton = new CoopTask(F("Button"), loopButton);
+	if (!*taskButton) Serial.println(F("CoopTask Button out of stack"));
+
+	taskBlink = new CoopTask(F("Blink"), loopBlink);
+	if (!*taskBlink) Serial.println(F("CoopTask Blink out of stack"));
+
+	//schedule_recurrent_function_us([]() { return schedWrap(taskBlink); }, 0);
 
 #ifdef ESP32
 	taskText = new CoopTask(F("Text"), [](CoopTask& task)
@@ -200,35 +199,24 @@ void setup()
 	if (!*taskText) Serial.println(F("CoopTask Text out of stack"));
 #endif
 
-	pinMode(LED_BUILTIN, OUTPUT);
-
-	//taskBlink = new CoopTask(F("Blink"), loopBlink, 0x310);
-	//if (!*taskBlink) Serial.println(F("CoopTask Blink out of stack"));
-
-	button1 = new Button(BUTTON1);
-
-	taskButton = new CoopTask(F("Button"), loopButton, 0x600);
-	if (!*taskButton) Serial.println(F("CoopTask Button out of stack"));
-
-	//schedule_recurrent_function_us([]() { return schedWrap(taskBlink); }, 0);
-
 	start = micros();
 }
 
-uint32_t taskWebRunnable = 1;
-uint32_t taskTextRunnable = 1;
-uint32_t taskBlinkRunnable = 1;
 uint32_t taskButtonRunnable = 1;
+uint32_t taskBlinkRunnable = 1;
+#ifdef ESP32
+uint32_t taskTextRunnable = 1;
+#endif
 
 void loop()
 {
-	if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
+	if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
+	if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
 #ifdef ESP32
 	if (taskTextRunnable != 0) taskTextRunnable = taskText->run();
 #endif
-	//if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
-	if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
 
+	// report
 	if (reportCnt > 100000)
 	{
 		Serial.print("Loop latency: ");
@@ -238,4 +226,10 @@ void loop()
 		start = micros();
 	}
 	++reportCnt;
+
+	// web
+	server.handleClient();
+#ifdef ESP8266
+	MDNS.update();
+#endif
 }
