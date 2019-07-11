@@ -20,6 +20,7 @@ bool CoopTask::initialize()
         *reinterpret_cast<uint32_t*>(taskStackTop) = STACKCOOKIE;
         *reinterpret_cast<uint32_t*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) = STACKCOOKIE;
         func(*this);
+        exit();
     }
     cont = false;
     return false;

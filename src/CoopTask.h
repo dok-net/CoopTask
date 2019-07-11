@@ -12,16 +12,7 @@ protected:
     static constexpr uint32_t MAXSTACKSPACE = 0x1000;
 #endif
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
-    void doYield(uint32_t val);
-public:
-    CoopTask(const String& name, std::function< void(CoopTask&) > _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
-        taskName(name), func(_func), taskStackSize(stackSize), delay_exp(0)
-    {
-    }
-    ~CoopTask()
-    {
-        delete[] taskStackTop;
-    }
+
     const String taskName;
     std::function< void(CoopTask&) > func;
     uint32_t taskStackSize;
@@ -33,9 +24,21 @@ public:
     bool cont = true;
     bool delayed = false;
 
+    bool initialize();
+    void doYield(uint32_t val);
+
+    public:
+    CoopTask(const String& name, std::function< void(CoopTask&) > _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+        taskName(name), func(_func), taskStackSize(stackSize), delay_exp(0)
+    {
+    }
+    ~CoopTask()
+    {
+        delete[] taskStackTop;
+    }
+
     const String& name() const { return taskName; }
     operator bool();
-    bool initialize();
     // @returns: 0: exited. 1: runnable. >1: sleeps for x ms.
     uint32_t run();
 
