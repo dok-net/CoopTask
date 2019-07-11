@@ -1,11 +1,12 @@
 #include <CoopTask.h>
-//#include <Schedule.h>
 
 #ifdef ESP8266
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+
+#include <Schedule.h>
 
 ESP8266WebServer server(80);
 #else
@@ -16,9 +17,6 @@ ESP8266WebServer server(80);
 
 WebServer server(80);
 #endif
-
-uint32_t reportCnt = 0;
-uint32_t start;
 
 #ifndef IRAM_ATTR
 #define IRAM_ATTR ICACHE_RAM_ATTR
@@ -70,11 +68,11 @@ void loopBlink(CoopTask& task)
     for (;;)
     {
         digitalWrite(LED_BUILTIN, LOW);
-        task.delay(2000);
+        CoopTask::delay(2000);
         digitalWrite(LED_BUILTIN, HIGH);
-        task.delay(3000);
+        CoopTask::delay(3000);
     }
-    task.exit();
+    CoopTask::exit();
 }
 
 Button* button1;
@@ -88,7 +86,7 @@ void loopButton(CoopTask& task) {
             Serial.println(count);
             delete button1;
             button1 = nullptr;
-            task.exit();
+            CoopTask::exit();
         }
         if (preCount != count) {
 
@@ -96,9 +94,9 @@ void loopButton(CoopTask& task) {
             Serial.println(count);
             preCount = count;
         }
-        task.yield();
+        CoopTask::yield();
     }
-    task.exit();
+    CoopTask::exit();
 }
 
 void handleRoot() {
@@ -120,25 +118,39 @@ void handleNotFound() {
     server.send(404, "text/plain", message);
 }
 
-//bool schedWrap(CoopTask* task)
-//{
-//	auto stat = task->run();
-//	switch (stat)
-//	{
-//	case 0: break;
-//	case 1: schedule_recurrent_function_us([task]() { return schedWrap(task); }, 0); break;
-//	default:
-//		Serial.print("Delayed scheduling (ms): "); Serial.println(stat);
-//		schedule_recurrent_function_us([task]() { return schedWrap(task); }, stat * 1000); break;
-//	}
-//	return false;
-//}
-
 CoopTask* taskButton;
 CoopTask* taskBlink;
 CoopTask* taskText;
 CoopTask* taskReport;
 CoopTask* taskWeb;
+
+// to demonstrate that yield and delay work in subroutines
+void printReport(uint32_t& reportCnt, uint32_t& start)
+{
+    CoopTask::delayMicroseconds(4000000);
+    Serial.print("Loop latency: ");
+    Serial.print((micros() - start) / reportCnt);
+    Serial.println("us");
+    reportCnt = 0;
+    start = micros();
+};
+
+#ifdef ESP8266
+bool schedWrap(CoopTask* task)
+{
+    auto stat = task->run();
+    switch (stat)
+    {
+    case 0: break;
+    case 1: schedule_recurrent_function_us([task]() { return schedWrap(task); }, 0); break;
+    default:
+        schedule_recurrent_function_us([task]() { return schedWrap(task); }, stat * (task->delayIsMs() ? 1000 : 1)); break;
+    }
+    return false;
+}
+#endif
+
+uint32_t reportCnt = 0;
 
 void setup()
 {
@@ -179,42 +191,32 @@ void setup()
     button1 = new Button(BUTTON1);
 
     taskButton = new CoopTask(F("Button"), loopButton);
-    if (!*taskButton) Serial.println(F("CoopTask Button out of stack"));
+    if (!*taskButton) Serial.printf("CoopTask %s out of stack\n", taskButton->name().c_str());
 
     taskBlink = new CoopTask(F("Blink"), loopBlink);
-    if (!*taskBlink) Serial.println(F("CoopTask Blink out of stack"));
-
-    //schedule_recurrent_function_us([]() { return schedWrap(taskBlink); }, 0);
+    if (!*taskBlink) Serial.printf("CoopTask %s out of stack\n", taskBlink->name().c_str());
 
     taskText = new CoopTask(F("Text"), [](CoopTask& task)
         {
             Serial.println("Task1 - A");
-            task.yield();
+            CoopTask::yield();
             Serial.println("Task1 - B");
             uint32_t start = millis();
-            task.delay(6000);
+            CoopTask::delay(6000);
             Serial.print("!!!Task1 - C - ");
             Serial.println(millis() - start);
-            task.exit();
+            //CoopTask::exit();
         });
-    if (!*taskText) Serial.println(F("CoopTask Text out of stack"));
+    if (!*taskText) Serial.printf("CoopTask %s out of stack\n", taskText->name().c_str());
 
     taskReport = new CoopTask(F("Report"), [](CoopTask& task)
         {
+            uint32_t start = micros();
             for (;;) {
-                if (reportCnt > 100000)
-                {
-                    Serial.print("Loop latency: ");
-                    Serial.print((micros() - start) / reportCnt);
-                    Serial.println("us");
-                    reportCnt = 0;
-                    start = micros();
-                }
-                ++reportCnt;
-                task.yield();
+                printReport(reportCnt, start);
             }
         });
-    if (!*taskReport) Serial.println(F("CoopTask Report out of stack"));
+    if (!*taskReport) Serial.printf("CoopTask %s out of stack\n", taskReport->name().c_str());
 
     taskWeb = new CoopTask(F("Web"), [](CoopTask& task)
         {
@@ -223,12 +225,18 @@ void setup()
 #ifdef ESP8266
                 MDNS.update();
 #endif
-                task.yield();
+                CoopTask::yield();
             }
         });
-    if (!*taskWeb) Serial.println(F("CoopTask Web out of stack"));
+    if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
-    start = micros();
+    //#ifdef ESP8266
+    //    schedule_recurrent_function_us([]() { return schedWrap(taskButton); }, 0);
+    //    schedule_recurrent_function_us([]() { return schedWrap(taskBlink); }, 0);
+    //    schedule_recurrent_function_us([]() { return schedWrap(taskText); }, 0);
+    //    schedule_recurrent_function_us([]() { return schedWrap(taskReport); }, 0);
+    //    schedule_recurrent_function_us([]() { return schedWrap(taskWeb); }, 0);
+    //#endif
 }
 
 uint32_t taskButtonRunnable = 1;
@@ -239,9 +247,13 @@ uint32_t taskWebRunnable = 1;
 
 void loop()
 {
+    //#ifndef ESP8266
     if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
     if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
     if (taskTextRunnable != 0) taskTextRunnable = taskText->run();
     if (taskReportRunnable != 0) taskReportRunnable = taskReport->run();
     if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
+    //#endif
+
+    ++reportCnt;
 }
