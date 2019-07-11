@@ -16,7 +16,7 @@ bool CoopTask::initialize()
     if (*this)
     {
         char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + sizeof(STACKCOOKIE))));
-        Serial.printf("bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
+        Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
         *reinterpret_cast<uint32_t*>(taskStackTop) = STACKCOOKIE;
         *reinterpret_cast<uint32_t*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) = STACKCOOKIE;
         func(*this);
