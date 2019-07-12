@@ -1,20 +1,32 @@
+#if defined(ESP8266) || defined(ESP32)
 #include <functional>
 #include <csetjmp>
+#else
+#include <setjmp.h>
+#endif
 #include <Arduino.h>
 
 class CoopTask
 {
 protected:
     static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
-#ifdef ESP32
+#if defined(ESP32)
     static constexpr uint32_t MAXSTACKSPACE = 0x2000;
-#else
+#elif defined (ESP8266)
     static constexpr uint32_t MAXSTACKSPACE = 0x1000;
+#else
+    static constexpr uint32_t MAXSTACKSPACE = 0x180;
 #endif
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
 
+#if defined(ESP8266) || defined(ESP32)
+    typedef std::function< void(CoopTask&) > taskfunc_t;
+#else
+    typedef void (*taskfunc_t)(CoopTask&);
+#endif
+
     const String taskName;
-    std::function< void(CoopTask&) > func;
+    taskfunc_t func;
     uint32_t taskStackSize;
     char* taskStackTop = nullptr;
     jmp_buf env;
@@ -32,7 +44,7 @@ protected:
     void doYield(uint32_t val);
 
 public:
-    CoopTask(const String& name, std::function< void(CoopTask&) > _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    CoopTask(const String& name, taskfunc_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
         taskName(name), func(_func), taskStackSize(stackSize)
     {
     }

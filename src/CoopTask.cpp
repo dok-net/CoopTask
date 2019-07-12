@@ -7,7 +7,13 @@ CoopTask::operator bool()
 {
     if (taskStackTop) return true;
     if (taskStackSize <= MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE))
+    {
+#if defined(ESP8266) || defined(ESP32)
         taskStackTop = new (std::nothrow) char[taskStackSize + 2 * sizeof(STACKCOOKIE)];
+#else
+        taskStackTop = new char[taskStackSize + 2 * sizeof(STACKCOOKIE)];
+#endif
+    }
     return taskStackTop;
 }
 
@@ -44,7 +50,7 @@ uint32_t CoopTask::run()
         if (*reinterpret_cast<uint32_t*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) != STACKCOOKIE)
         {
             printf("FATAL ERROR: CoopTask %s stack corrupted\n", name().c_str());
-            std::abort();
+            ::abort();
         }
 
         longjmp(env_yield, 0);
@@ -55,7 +61,7 @@ uint32_t CoopTask::run()
         if (*reinterpret_cast<uint32_t*>(taskStackTop) != STACKCOOKIE)
         {
             printf("FATAL ERROR: CoopTask %s stack overflow\n", name().c_str());
-            std::abort();
+            ::abort();
         }
         cont = val > 1;
     }

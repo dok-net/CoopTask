@@ -1,6 +1,6 @@
 #include <CoopTask.h>
 
-#ifdef ESP8266
+#if defined(ESP8266)
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
@@ -9,13 +9,17 @@
 #include <Schedule.h>
 
 ESP8266WebServer server(80);
-#else
+#elif defined(ESP32)
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
 
 WebServer server(80);
+#endif
+
+#if !defined(ESP8266) && !defined(ESP32)
+#define ICACHE_RAM_ATTR
 #endif
 
 #ifndef IRAM_ATTR
@@ -30,6 +34,7 @@ WebServer server(80);
 #define BUTTON1 0
 #endif
 
+#if defined(ESP8266) || defined(ESP32)
 class Button {
 public:
     Button(uint8_t reqPin) : PIN(reqPin) {
@@ -62,6 +67,7 @@ private:
     volatile uint32_t numberKeyPresses = 0;
     volatile bool pressed = false;
 };
+#endif
 
 void loopBlink(CoopTask& task)
 {
@@ -75,6 +81,7 @@ void loopBlink(CoopTask& task)
     CoopTask::exit();
 }
 
+#if defined(ESP8266) || defined(ESP32)
 Button* button1;
 
 void loopButton(CoopTask& task) {
@@ -117,12 +124,17 @@ void handleNotFound() {
     }
     server.send(404, "text/plain", message);
 }
+#endif
 
+#if defined(ESP8266) || defined(ESP32)
 CoopTask* taskButton;
+#endif
 CoopTask* taskBlink;
 CoopTask* taskText;
 CoopTask* taskReport;
+#if defined(ESP8266) || defined(ESP32)
 CoopTask* taskWeb;
+#endif
 
 // to demonstrate that yield and delay work in subroutines
 void printReport(uint32_t& reportCnt, uint32_t& start)
@@ -157,6 +169,7 @@ void setup()
     Serial.begin(74880);
     delay(500);
 
+#if defined(ESP8266) || defined(ESP32)
     WiFi.mode(WIFI_STA);
     WiFi.begin();
 
@@ -183,18 +196,21 @@ void setup()
 
     server.begin();
     Serial.println("HTTP server started");
+#endif
 
     Serial.println("Scheduler test");
 
     pinMode(LED_BUILTIN, OUTPUT);
 
+#if defined(ESP8266) || defined(ESP32)
     button1 = new Button(BUTTON1);
 
     taskButton = new CoopTask(F("Button"), loopButton);
     if (!*taskButton) Serial.printf("CoopTask %s out of stack\n", taskButton->name().c_str());
+#endif
 
     taskBlink = new CoopTask(F("Blink"), loopBlink);
-    if (!*taskBlink) Serial.printf("CoopTask %s out of stack\n", taskBlink->name().c_str());
+    if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
     taskText = new CoopTask(F("Text"), [](CoopTask& task)
         {
@@ -207,7 +223,7 @@ void setup()
             Serial.println(millis() - start);
             //CoopTask::exit();
         });
-    if (!*taskText) Serial.printf("CoopTask %s out of stack\n", taskText->name().c_str());
+    if (!*taskText) Serial.println("CoopTask Text out of stack");
 
     taskReport = new CoopTask(F("Report"), [](CoopTask& task)
         {
@@ -216,8 +232,9 @@ void setup()
                 printReport(reportCnt, start);
             }
         });
-    if (!*taskReport) Serial.printf("CoopTask %s out of stack\n", taskReport->name().c_str());
+    if (!*taskReport) Serial.println("CoopTask Report out of stack");
 
+#if defined(ESP8266) || defined(ESP32)
     taskWeb = new CoopTask(F("Web"), [](CoopTask& task)
         {
             for (;;) {
@@ -237,22 +254,31 @@ void setup()
     //    schedule_recurrent_function_us([]() { return schedWrap(taskReport); }, 0);
     //    schedule_recurrent_function_us([]() { return schedWrap(taskWeb); }, 0);
     //#endif
+#endif
 }
 
+#if defined(ESP8266) || defined(ESP32)
 uint32_t taskButtonRunnable = 1;
+#endif
 uint32_t taskBlinkRunnable = 1;
 uint32_t taskTextRunnable = 1;
 uint32_t taskReportRunnable = 1;
+#if defined(ESP8266) || defined(ESP32)
 uint32_t taskWebRunnable = 1;
+#endif
 
 void loop()
 {
     //#ifndef ESP8266
+#if defined(ESP8266) || defined(ESP32)
     if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
+#endif
     if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
     if (taskTextRunnable != 0) taskTextRunnable = taskText->run();
     if (taskReportRunnable != 0) taskReportRunnable = taskReport->run();
+#if defined(ESP8266) || defined(ESP32)
     if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
+#endif
     //#endif
 
     ++reportCnt;
