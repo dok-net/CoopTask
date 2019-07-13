@@ -20,9 +20,9 @@ protected:
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
 
 #if defined(ESP8266) || defined(ESP32)
-    typedef std::function< void(CoopTask&) > taskfunc_t;
+    typedef std::function< void() > taskfunc_t;
 #else
-    typedef void (*taskfunc_t)(CoopTask&);
+    typedef void (*taskfunc_t)();
 #endif
 
     const String taskName;

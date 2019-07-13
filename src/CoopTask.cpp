@@ -27,7 +27,7 @@ bool CoopTask::initialize()
         //Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
         *reinterpret_cast<uint32_t*>(taskStackTop) = STACKCOOKIE;
         *reinterpret_cast<uint32_t*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) = STACKCOOKIE;
-        func(*this);
+        func();
         _exit();
     }
     cont = false;

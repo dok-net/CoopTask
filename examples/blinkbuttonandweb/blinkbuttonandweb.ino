@@ -69,7 +69,7 @@ private:
 };
 #endif
 
-void loopBlink(CoopTask& task)
+void loopBlink()
 {
     for (;;)
     {
@@ -84,7 +84,7 @@ void loopBlink(CoopTask& task)
 #if defined(ESP8266) || defined(ESP32)
 Button* button1;
 
-void loopButton(CoopTask& task) {
+void loopButton() {
     int preCount = 0;
     int count = 0;
     for (;;)
@@ -212,7 +212,7 @@ void setup()
     taskBlink = new CoopTask(F("Blink"), loopBlink);
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
-    taskText = new CoopTask(F("Text"), [](CoopTask& task)
+    taskText = new CoopTask(F("Text"), []()
         {
             Serial.println("Task1 - A");
             CoopTask::yield();
@@ -225,7 +225,7 @@ void setup()
         });
     if (!*taskText) Serial.println("CoopTask Text out of stack");
 
-    taskReport = new CoopTask(F("Report"), [](CoopTask& task)
+    taskReport = new CoopTask(F("Report"), []()
         {
             uint32_t start = micros();
             for (;;) {
@@ -235,7 +235,7 @@ void setup()
     if (!*taskReport) Serial.println("CoopTask Report out of stack");
 
 #if defined(ESP8266) || defined(ESP32)
-    taskWeb = new CoopTask(F("Web"), [](CoopTask& task)
+    taskWeb = new CoopTask(F("Web"), []()
         {
             for (;;) {
                 server.handleClient();
