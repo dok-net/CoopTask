@@ -37,11 +37,18 @@ protected:
     bool init = false;
     bool cont = true;
     bool delayed = false;
+    bool sleeping = false;
 
     static CoopTask* current;
 
     bool initialize();
     void doYield(uint32_t val);
+
+    void _exit();
+    void _yield();
+    void _sleep();
+    void _delay(uint32_t ms);
+    void _delayMicroseconds(uint32_t us);
 
 public:
     CoopTask(const String& name, taskfunc_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
@@ -62,13 +69,16 @@ public:
     uint32_t run();
     bool delayIsMs() { return delay_ms; }
 
-    void _exit();
-    void _yield();
-    void _delay(uint32_t ms);
-    void _delayMicroseconds(uint32_t us);
+    void sleep(const bool state) { sleeping = state; }
 
+    /// use only in running CoopTask function
     static void exit() { current->_exit(); }
+    /// use only in running CoopTask function
     static void yield() { current->_yield(); }
+    /// use only in running CoopTask function
+    static void sleep() { current->_sleep(); }
+    /// use only in running CoopTask function
     static void delay(uint32_t ms) { current->_delay(ms); }
+    /// use only in running CoopTask function
     static void delayMicroseconds(uint32_t us) { current->_delayMicroseconds(us); }
 };

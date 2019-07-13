@@ -38,6 +38,7 @@ bool CoopTask::initialize()
 uint32_t CoopTask::run()
 {
     if (!cont) return 0;
+    if (sleeping) return 1;
     if (delayed)
     {
         int32_t delay_rem = delay_ms ? static_cast<int32_t>(delay_exp - millis()) : static_cast<int32_t>(delay_exp - micros());
@@ -66,6 +67,7 @@ uint32_t CoopTask::run()
             ::abort();
         }
         cont &= val > 1;
+        sleeping = val == 3;
         delayed = val > 3;
     }
     if (!cont) return 0;
@@ -97,6 +99,11 @@ void CoopTask::_exit()
 void CoopTask::_yield()
 {
     doYield(2);
+}
+
+void CoopTask::_sleep()
+{
+    doYield(3);
 }
 
 void CoopTask::_delay(uint32_t ms)
