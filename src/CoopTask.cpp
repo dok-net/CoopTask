@@ -5,6 +5,7 @@ CoopTask* CoopTask::current = nullptr;
 
 CoopTask::operator bool()
 {
+    if (!cont) return false;
     if (taskStackTop) return true;
     if (taskStackSize <= MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE))
     {
@@ -44,6 +45,7 @@ uint32_t CoopTask::run()
         delayed = false;
     }
     auto val = setjmp(env);
+    // val = 0: init; 1: exit() task; 2: yield task; 3: sleep task; >3: delay task until target delay_exp
     if (!val) {
         current = this;
         if (!init) return initialize();
@@ -63,9 +65,20 @@ uint32_t CoopTask::run()
             printf("FATAL ERROR: CoopTask %s stack overflow\n", name().c_str());
             ::abort();
         }
-        cont = val > 1;
+        cont &= val > 1;
+        delayed = val > 3;
     }
-    return !cont ? 0 : (val > 2 ? val : 1);
+    if (!cont) return 0;
+    switch (val)
+    {
+    case 2:
+    case 3:
+        return 1;
+        break;
+    default:
+        return delay_exp > 2 ? delay_exp : 2;
+        break;
+    }
 }
 
 void CoopTask::doYield(uint32_t val)
@@ -74,6 +87,11 @@ void CoopTask::doYield(uint32_t val)
     {
         longjmp(env, val);
     }
+}
+
+void CoopTask::_exit()
+{
+    longjmp(env, 1);
 }
 
 void CoopTask::_yield()
@@ -85,21 +103,14 @@ void CoopTask::_delay(uint32_t ms)
 {
     delay_ms = true;
     delay_exp = millis() + ms;
-    delayed = true;
     // CoopTask::run() sleeps task until delay_exp is reached
-    doYield(ms > 2 ? ms : 2);
+    doYield(4);
 }
 
 void CoopTask::_delayMicroseconds(uint32_t us)
 {
     delay_ms = false;
     delay_exp = micros() + us;
-    delayed = true;
     // CoopTask::run() sleeps task until delay_exp is reached
-    doYield(us > 2 ? us : 2);
-}
-
-void CoopTask::_exit()
-{
-    longjmp(env, 0);
+    doYield(4);
 }

@@ -55,19 +55,20 @@ public:
 
     const String& name() const { return taskName; }
 
-    // @returns: true if the CoopTask objects is completely ready to run, including stack allocation.
+    // @returns: true if the CoopTask object is ready to run, including stack allocation.
+    //           false if either initialization has failed, or the task has exited().
     operator bool();
-    // @returns: 0: exited. 1: runnable. >1: sleeps for x ms or us, check delayIsMs().
+    // @returns: 0: exited. 1: runnable or sleeping. >1: delayed until millis() or micros() deadline, check delayIsMs().
     uint32_t run();
     bool delayIsMs() { return delay_ms; }
 
+    void _exit();
     void _yield();
     void _delay(uint32_t ms);
     void _delayMicroseconds(uint32_t us);
-    void _exit();
 
+    static void exit() { current->_exit(); }
     static void yield() { current->_yield(); }
     static void delay(uint32_t ms) { current->_delay(ms); }
     static void delayMicroseconds(uint32_t us) { current->_delayMicroseconds(us); }
-    static void exit() { current->_exit(); }
 };
