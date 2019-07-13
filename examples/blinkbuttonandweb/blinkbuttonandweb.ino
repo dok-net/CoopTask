@@ -281,5 +281,7 @@ void loop()
 #endif
     //#endif
 
+    if (reportCnt == 1) taskReport->sleep(true);
     ++reportCnt;
+    if (reportCnt > 100000) taskReport->sleep(false);
 }
