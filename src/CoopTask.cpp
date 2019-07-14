@@ -91,8 +91,9 @@ void CoopTask::doYield(uint32_t val)
     }
 }
 
-void CoopTask::_exit()
+void CoopTask::_exit(int code)
 {
+    _exitCode = code;
     longjmp(env, 1);
 }
 
