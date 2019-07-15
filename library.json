@@ -1,10 +1,10 @@
 {
     "name": "CoopTask",
-    "version": "0.5.0",
+    "version": "0.7.0",
     "keywords": [
       "multitasking"
     ],
-    "description": "ESP8266/ESP32 library for creating multiple cooperative tasks like Arduino Scheduler",
+    "description": "Portable library for creating multiple cooperative tasks like Arduino Scheduler",
     "repository":
     {
         "type": "git",
