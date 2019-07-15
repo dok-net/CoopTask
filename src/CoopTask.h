@@ -18,6 +18,7 @@ protected:
     static constexpr uint32_t MAXSTACKSPACE = 0x180;
 #endif
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
+    static constexpr uint32_t DELAYMICROS_THREASHOLD = 50;
 
 #if defined(ESP8266) || defined(ESP32)
     typedef std::function< int() > taskfunc_t;

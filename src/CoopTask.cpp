@@ -120,6 +120,10 @@ void CoopTask::_delay(uint32_t ms)
 
 void CoopTask::_delayMicroseconds(uint32_t us)
 {
+    if (us < DELAYMICROS_THREASHOLD) {
+        ::delayMicroseconds(us);
+        return;
+    }
     delay_ms = false;
     delay_exp = micros() + us;
     // CoopTask::run() sleeps task until delay_exp is reached
