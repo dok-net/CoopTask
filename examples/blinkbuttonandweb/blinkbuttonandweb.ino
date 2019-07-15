@@ -136,6 +136,14 @@ CoopTask* taskReport;
 CoopTask* taskWeb;
 #endif
 
+void printStackReport(CoopTask* task)
+{
+    if (!task) return;
+    Serial.print(task->name().c_str());
+    Serial.print(" free stack = ");
+    Serial.println(task->getFreeStack());
+}
+
 // to demonstrate that yield and delay work in subroutines
 void printReport(uint32_t& reportCnt, uint32_t& start)
 {
@@ -143,6 +151,16 @@ void printReport(uint32_t& reportCnt, uint32_t& start)
     Serial.print("Loop latency: ");
     Serial.print((micros() - start) / reportCnt);
     Serial.println("us");
+#if defined(ESP8266) || defined(ESP32)
+    printStackReport(taskButton);
+#endif
+    printStackReport(taskBlink);
+    printStackReport(taskText);
+    printStackReport(taskReport);
+#if defined(ESP8266) || defined(ESP32)
+    printStackReport(taskWeb);
+#endif
+
     reportCnt = 0;
     start = micros();
 };
@@ -166,7 +184,11 @@ uint32_t reportCnt = 0;
 
 void setup()
 {
+#ifdef ESP8266
     Serial.begin(74880);
+#else
+    Serial.begin(115200);
+#endif
     delay(500);
 
 #if defined(ESP8266) || defined(ESP32)
@@ -198,18 +220,20 @@ void setup()
     Serial.println("HTTP server started");
 #endif
 
-    Serial.println("Scheduler test");
-
     pinMode(LED_BUILTIN, OUTPUT);
 
 #if defined(ESP8266) || defined(ESP32)
     button1 = new Button(BUTTON1);
 
-    taskButton = new CoopTask(F("Button"), loopButton);
+    taskButton = new CoopTask(F("Button"), loopButton, 0x700);
     if (!*taskButton) Serial.printf("CoopTask %s out of stack\n", taskButton->name().c_str());
 #endif
 
-    taskBlink = new CoopTask(F("Blink"), loopBlink);
+#if defined(ESP8266) || defined(ESP32)
+    taskBlink = new CoopTask(F("Blink"), loopBlink, 0x240);
+#else
+    taskBlink = new CoopTask(F("Blink"), loopBlink, 0x28);
+#endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
     taskText = new CoopTask(F("Text"), []()
@@ -222,7 +246,12 @@ void setup()
             Serial.print("!!!Task1 - C - ");
             Serial.println(millis() - start);
             return 0;
-        });
+        }
+#if defined(ESP8266) || defined(ESP32)
+    , 0x180);
+#else
+    , 0x50);
+#endif
     if (!*taskText) Serial.println("CoopTask Text out of stack");
 
     taskReport = new CoopTask(F("Report"), []()
@@ -232,7 +261,12 @@ void setup()
                 printReport(reportCnt, start);
             }
             return 0;
-        });
+        }
+#if defined(ESP8266) || defined(ESP32)
+    , 0x380);
+#else
+    , 0x68);
+#endif
     if (!*taskReport) Serial.println("CoopTask Report out of stack");
 
 #if defined(ESP8266) || defined(ESP32)
@@ -246,7 +280,7 @@ void setup()
                 CoopTask::yield();
             }
             return 0;
-        });
+        }, 0x800);
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
     //#ifdef ESP8266
@@ -257,6 +291,8 @@ void setup()
     //    schedule_recurrent_function_us([]() { return schedWrap(taskWeb); }, 0);
     //#endif
 #endif
+
+    Serial.println("Scheduler test");
 }
 
 #if defined(ESP8266) || defined(ESP32)

@@ -24,10 +24,13 @@ bool CoopTask::initialize()
     init = true;
     if (*this)
     {
+        // fill stack with magic values to check overflow, corruption, and high water mark
+        for (uint32_t pos = 0; pos <= (taskStackSize + sizeof(STACKCOOKIE)) / sizeof(uint32_t); ++pos)
+        {
+            reinterpret_cast<uint32_t*>(taskStackTop)[pos] = STACKCOOKIE;
+        }
         char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + sizeof(STACKCOOKIE))));
         //Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
-        *reinterpret_cast<uint32_t*>(taskStackTop) = STACKCOOKIE;
-        *reinterpret_cast<uint32_t*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) = STACKCOOKIE;
         _exit(func());
     }
     cont = false;
@@ -84,6 +87,18 @@ uint32_t CoopTask::run()
         return delay_exp > 2 ? delay_exp : 2;
         break;
     }
+}
+
+uint32_t CoopTask::getFreeStack()
+{
+    if (!taskStackTop) return 0;
+    uint32_t pos;
+    for (pos = 1; pos < (taskStackSize + sizeof(STACKCOOKIE)) / sizeof(uint32_t); ++pos)
+    {
+        if (STACKCOOKIE != reinterpret_cast<uint32_t*>(taskStackTop)[pos])
+            break;
+    }
+    return (pos - 1) * sizeof(uint32_t);
 }
 
 void CoopTask::doYield(uint32_t val)

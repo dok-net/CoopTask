@@ -70,6 +70,8 @@ public:
     // @returns: 0: exited. 1: runnable or sleeping. >1: delayed until millis() or micros() deadline, check delayIsMs().
     uint32_t run();
 
+    // @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
+    uint32_t getFreeStack();
 
     // @returns: default exit code is 0, using exit() the task can set a different value.
     int exitCode() { return _exitCode; }
