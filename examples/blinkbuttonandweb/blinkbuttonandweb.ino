@@ -69,7 +69,7 @@ private:
 };
 #endif
 
-void loopBlink()
+int loopBlink()
 {
     for (;;)
     {
@@ -78,13 +78,13 @@ void loopBlink()
         digitalWrite(LED_BUILTIN, HIGH);
         CoopTask::delay(3000);
     }
-    CoopTask::exit();
+    return 0;
 }
 
 #if defined(ESP8266) || defined(ESP32)
 Button* button1;
 
-void loopButton() {
+int loopButton() {
     int preCount = 0;
     int count = 0;
     for (;;)
@@ -103,7 +103,7 @@ void loopButton() {
         }
         CoopTask::yield();
     }
-    CoopTask::exit();
+    return 0;
 }
 
 void handleRoot() {
@@ -221,7 +221,7 @@ void setup()
             CoopTask::delay(6000);
             Serial.print("!!!Task1 - C - ");
             Serial.println(millis() - start);
-            //CoopTask::exit();
+            return 0;
         });
     if (!*taskText) Serial.println("CoopTask Text out of stack");
 
@@ -231,6 +231,7 @@ void setup()
             for (;;) {
                 printReport(reportCnt, start);
             }
+            return 0;
         });
     if (!*taskReport) Serial.println("CoopTask Report out of stack");
 
@@ -244,6 +245,7 @@ void setup()
 #endif
                 CoopTask::yield();
             }
+            return 0;
         });
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 

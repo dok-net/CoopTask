@@ -20,9 +20,9 @@ protected:
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
 
 #if defined(ESP8266) || defined(ESP32)
-    typedef std::function< void() > taskfunc_t;
+    typedef std::function< int() > taskfunc_t;
 #else
-    typedef void (*taskfunc_t)();
+    typedef int(*taskfunc_t)();
 #endif
 
     const String taskName;
@@ -77,7 +77,9 @@ public:
 
     void sleep(const bool state) { sleeping = state; }
 
-    /// use only in running CoopTask function.
+    /// use only in running CoopTask function. As stack unwinding is corrupted
+    /// by exit(), which among other issues breaks the RAII idiom,
+    /// using regular return is to be preferred in most cases.
     // @param code default exit code is 0, use exit() to set a different value.
     static void exit(int code = 0) { current->_exit(code); }
     /// use only in running CoopTask function.
