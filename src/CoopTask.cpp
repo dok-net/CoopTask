@@ -69,7 +69,11 @@ uint32_t CoopTask::run()
         sleeping = val == 3;
         delayed = val > 3;
     }
-    if (!cont) return 0;
+    if (!cont) {
+        delete[] taskStackTop;
+        taskStackTop = nullptr;
+        return 0;
+    }
     switch (val)
     {
     case 2:
