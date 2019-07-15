@@ -43,8 +43,17 @@ uint32_t CoopTask::run()
     if (sleeping) return 1;
     if (delayed)
     {
-        int32_t delay_rem = delay_ms ? static_cast<int32_t>(delay_exp - millis()) : static_cast<int32_t>(delay_exp - micros());
-        if (delay_rem > 0) return delay_rem;
+        if (delay_ms)
+        {
+            int32_t delay_rem = static_cast<int32_t>(delay_exp - millis());
+            if (delay_rem > 0) return delay_rem;
+        }
+        else
+        {
+            int32_t delay_rem = static_cast<int32_t>(delay_exp - micros());
+            if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
+            ::delayMicroseconds(delay_rem);
+        }
         delayed = false;
     }
     auto val = setjmp(env);
@@ -135,7 +144,7 @@ void CoopTask::_delay(uint32_t ms)
 
 void CoopTask::_delayMicroseconds(uint32_t us)
 {
-    if (us < DELAYMICROS_THREASHOLD) {
+    if (us < DELAYMICROS_THRESHOLD) {
         ::delayMicroseconds(us);
         return;
     }

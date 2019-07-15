@@ -97,7 +97,7 @@ int loopButton() {
         }
         if (preCount != count) {
 
-            Serial.print("loop4: count = ");
+            Serial.print("loopButton: count = ");
             Serial.println(count);
             preCount = count;
         }
@@ -166,15 +166,26 @@ void printReport(uint32_t& reportCnt, uint32_t& start)
 };
 
 #ifdef ESP8266
-bool schedWrap(CoopTask* task)
+bool scheduledTask(CoopTask* task, uint32_t repeat_us = 0)
 {
     auto stat = task->run();
     switch (stat)
     {
-    case 0: break;
-    case 1: schedule_recurrent_function_us([task]() { return schedWrap(task); }, 0); break;
-    default:
-        schedule_recurrent_function_us([task]() { return schedWrap(task); }, stat * (task->delayIsMs() ? 1000 : 1)); break;
+    case 0: // exited.
+        return false;
+        break;
+    case 1: // runnable or sleeping.
+        if (!repeat_us) return true;
+        schedule_recurrent_function_us([task]() { return scheduledTask(task); }, 0);
+        return false;
+        break;
+    default: // delayed until millis() or micros() deadline, check delayIsMs().
+        auto next_repeat_us = static_cast<int32_t>(task->delayIsMs() ? (stat - millis()) * 1000 : stat - micros());
+        if (next_repeat_us < 0) next_repeat_us = 0;
+        if (next_repeat_us == repeat_us) return true;
+        schedule_recurrent_function_us([task, next_repeat_us]() { return scheduledTask(task, next_repeat_us); }, next_repeat_us);
+        return false;
+        break;
     }
     return false;
 }
@@ -284,11 +295,11 @@ void setup()
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
     //#ifdef ESP8266
-    //    schedule_recurrent_function_us([]() { return schedWrap(taskButton); }, 0);
-    //    schedule_recurrent_function_us([]() { return schedWrap(taskBlink); }, 0);
-    //    schedule_recurrent_function_us([]() { return schedWrap(taskText); }, 0);
-    //    schedule_recurrent_function_us([]() { return schedWrap(taskReport); }, 0);
-    //    schedule_recurrent_function_us([]() { return schedWrap(taskWeb); }, 0);
+    //    schedule_recurrent_function_us([]() { return scheduledTask(taskButton); }, 0);
+    //    schedule_recurrent_function_us([]() { return scheduledTask(taskBlink); }, 0);
+    //    schedule_recurrent_function_us([]() { return scheduledTask(taskText); }, 0);
+    //    schedule_recurrent_function_us([]() { return scheduledTask(taskReport); }, 0);
+    //    schedule_recurrent_function_us([]() { return scheduledTask(taskWeb); }, 0);
     //#endif
 #endif
 
