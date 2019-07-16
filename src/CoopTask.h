@@ -1,3 +1,25 @@
+/*
+CoopTask.h - Implementation of cooperative scheduling tasks
+Copyright (c) 2019 Dirk O. Kaar. All rights reserved.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+#ifndef __CoopTask_h
+#define __CoopTask_h
+
 #if defined(ESP8266) || defined(ESP32)
 #include <functional>
 #include <csetjmp>
@@ -18,7 +40,7 @@ protected:
     static constexpr uint32_t MAXSTACKSPACE = 0x180;
 #endif
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
-    static constexpr uint32_t DELAYMICROS_THRESHOLD = 50;
+    static constexpr int32_t DELAYMICROS_THRESHOLD = 50;
 
 #if defined(ESP8266) || defined(ESP32)
     typedef std::function< int() > taskfunc_t;
@@ -80,6 +102,8 @@ public:
 
     void sleep(const bool state) { sleeping = state; }
 
+    static bool running() { return current; }
+
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
     /// using regular return is to be preferred in most cases.
@@ -94,3 +118,5 @@ public:
     /// use only in running CoopTask function.
     static void delayMicroseconds(uint32_t us) { current->_delayMicroseconds(us); }
 };
+
+#endif // __CoopTask_h

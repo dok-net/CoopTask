@@ -1,5 +1,64 @@
+/*
+CoopTask.cpp - Implementation of cooperative scheduling tasks
+Copyright (c) 2019 Dirk O. Kaar. All rights reserved.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include "CoopTask.h"
 #include <alloca.h>
+
+// Integration into global yield() and delay()
+#if defined(ESP8266) || defined(ESP32)
+extern "C" {
+    void __yield();
+
+    void yield()
+    {
+        if (CoopTask::running()) CoopTask::yield();
+        else __yield();
+    }
+}
+#else // Arduino
+extern "C" {
+    void yield()
+    {
+        if (CoopTask::running()) CoopTask::yield();
+    }}
+#endif
+#if defined(ESP32)
+extern "C" {
+    extern void __delay(uint32_t ms);
+
+    void delay(uint32_t ms)
+    {
+        if (CoopTask::running()) CoopTask::delay(ms);
+        else __delay(ms);
+    }
+}
+#elif defined(ESP8266)
+extern "C" {
+    extern void __delay(unsigned long ms);
+
+    void delay(unsigned long ms)
+    {
+        if (CoopTask::running()) CoopTask::delay(ms);
+        else __delay(ms);
+    }
+}
+#endif
 
 CoopTask* CoopTask::current = nullptr;
 
@@ -52,7 +111,7 @@ uint32_t CoopTask::run()
         {
             int32_t delay_rem = static_cast<int32_t>(delay_exp - micros());
             if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
-            ::delayMicroseconds(delay_rem);
+            if (delay_rem > 0) ::delayMicroseconds(delay_rem);
         }
         delayed = false;
     }

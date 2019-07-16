@@ -74,9 +74,9 @@ int loopBlink()
     for (;;)
     {
         digitalWrite(LED_BUILTIN, LOW);
-        CoopTask::delay(2000);
+        delay(2000);
         digitalWrite(LED_BUILTIN, HIGH);
-        CoopTask::delay(3000);
+        delay(3000);
     }
     return 0;
 }
@@ -101,7 +101,7 @@ int loopButton() {
             Serial.println(count);
             preCount = count;
         }
-        CoopTask::yield();
+        yield();
     }
     return 0;
 }
@@ -243,25 +243,26 @@ void setup()
 #if defined(ESP8266) || defined(ESP32)
     taskBlink = new CoopTask(F("Blink"), loopBlink, 0x240);
 #else
-    taskBlink = new CoopTask(F("Blink"), loopBlink, 0x28);
+    taskBlink = new CoopTask(F("Blink"), loopBlink, 0x40);
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
     taskText = new CoopTask(F("Text"), []()
         {
             Serial.println("Task1 - A");
-            CoopTask::yield();
+            yield();
             Serial.println("Task1 - B");
             uint32_t start = millis();
-            CoopTask::delay(6000);
+            delay(6000);
             Serial.print("!!!Task1 - C - ");
             Serial.println(millis() - start);
+            printStackReport(taskText);
             return 0;
         }
 #if defined(ESP8266) || defined(ESP32)
-    , 0x180);
+    , 0x260);
 #else
-    , 0x50);
+    , 0x60);
 #endif
     if (!*taskText) Serial.println("CoopTask Text out of stack");
 
@@ -288,7 +289,7 @@ void setup()
 #ifdef ESP8266
                 MDNS.update();
 #endif
-                CoopTask::yield();
+                yield();
             }
             return 0;
         }, 0x800);
