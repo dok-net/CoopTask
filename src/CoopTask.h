@@ -119,4 +119,18 @@ public:
     static void delayMicroseconds(uint32_t us) { current->_delayMicroseconds(us); }
 };
 
+// temporary hack until delay() hook is available on platforms
+#if defined(ESP8266) || defined(ESP32)
+#define delay(m) { \
+    if (CoopTask::running()) CoopTask::delay(m); \
+    else ::delay(m); \
+}
+#endif
+#if defined(ESP32)
+#define yield() { \
+    if (CoopTask::running()) CoopTask::yield(); \
+    else ::yield(); \
+}
+#endif
+
 #endif // __CoopTask_h

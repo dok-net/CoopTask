@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <alloca.h>
 
 // Integration into global yield() and delay()
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) /* || defined(ESP32) - temporarily disabled until delay() hook is available on platforms */
 extern "C" {
     void __yield();
 
@@ -31,13 +31,14 @@ extern "C" {
         else __yield();
     }
 }
-#else // Arduino
+#elif !defined(ESP32) // Arduino
 extern "C" {
     void yield()
     {
         if (CoopTask::running()) CoopTask::yield();
     }}
 #endif
+/* - temporarily disabled until delay() hook is available on platforms
 #if defined(ESP32)
 extern "C" {
     extern void __delay(uint32_t ms);
@@ -59,6 +60,7 @@ extern "C" {
     }
 }
 #endif
+*/
 
 CoopTask* CoopTask::current = nullptr;
 
