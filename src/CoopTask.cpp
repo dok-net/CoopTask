@@ -199,7 +199,7 @@ void CoopTask::_delay(uint32_t ms)
 {
     delay_ms = true;
     delay_exp = millis() + ms;
-    // CoopTask::run() sleeps task until delay_exp is reached
+    // CoopTask::run() defers task until delay_exp is reached
     doYield(4);
 }
 
@@ -211,6 +211,6 @@ void CoopTask::_delayMicroseconds(uint32_t us)
     }
     delay_ms = false;
     delay_exp = micros() + us;
-    // CoopTask::run() sleeps task until delay_exp is reached
+    // CoopTask::run() defers task until delay_exp is reached
     doYield(4);
 }

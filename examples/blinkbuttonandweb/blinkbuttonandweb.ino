@@ -147,7 +147,7 @@ void printStackReport(CoopTask* task)
 // to demonstrate that yield and delay work in subroutines
 void printReport(uint32_t& reportCnt, uint32_t& start)
 {
-    CoopTask::delayMicroseconds(4000000);
+    //CoopTask::delayMicroseconds(4000000);
     Serial.print("Loop latency: ");
     Serial.print((micros() - start) / reportCnt);
     Serial.println("us");
@@ -166,8 +166,10 @@ void printReport(uint32_t& reportCnt, uint32_t& start)
 };
 
 #ifdef ESP8266
-bool scheduledTask(CoopTask* task, uint32_t repeat_us = 0)
+bool rescheduleTask(CoopTask* task, uint32_t repeat_us)
 {
+    if (task->sleeping())
+        return false;
     auto stat = task->run();
     switch (stat)
     {
@@ -175,19 +177,28 @@ bool scheduledTask(CoopTask* task, uint32_t repeat_us = 0)
         return false;
         break;
     case 1: // runnable or sleeping.
+        if (task->sleeping()) return false;
         if (!repeat_us) return true;
-        schedule_recurrent_function_us([task]() { return scheduledTask(task); }, 0);
+        schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
         return false;
         break;
     default: // delayed until millis() or micros() deadline, check delayIsMs().
+        if (task->sleeping()) return false;
         auto next_repeat_us = static_cast<int32_t>(task->delayIsMs() ? (stat - millis()) * 1000 : stat - micros());
         if (next_repeat_us < 0) next_repeat_us = 0;
         if (next_repeat_us == repeat_us) return true;
-        schedule_recurrent_function_us([task, next_repeat_us]() { return scheduledTask(task, next_repeat_us); }, next_repeat_us);
+        schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us);
         return false;
         break;
     }
     return false;
+}
+
+bool scheduleTask(CoopTask* task, bool wakeup = false)
+{
+    if (wakeup)
+        task->sleep(false);
+    schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
 }
 #endif
 
@@ -270,6 +281,7 @@ void setup()
         {
             uint32_t start = micros();
             for (;;) {
+                CoopTask::sleep();
                 printReport(reportCnt, start);
             }
             return 0;
@@ -295,43 +307,48 @@ void setup()
         }, 0x800);
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
-    //#ifdef ESP8266
-    //    schedule_recurrent_function_us([]() { return scheduledTask(taskButton); }, 0);
-    //    schedule_recurrent_function_us([]() { return scheduledTask(taskBlink); }, 0);
-    //    schedule_recurrent_function_us([]() { return scheduledTask(taskText); }, 0);
-    //    schedule_recurrent_function_us([]() { return scheduledTask(taskReport); }, 0);
-    //    schedule_recurrent_function_us([]() { return scheduledTask(taskWeb); }, 0);
-    //#endif
+#ifdef ESP8266
+    scheduleTask(taskButton);
+    scheduleTask(taskBlink);
+    scheduleTask(taskText);
+    scheduleTask(taskReport);
+    scheduleTask(taskWeb);
+#endif
 #endif
 
     Serial.println("Scheduler test");
 }
 
-#if defined(ESP8266) || defined(ESP32)
-uint32_t taskButtonRunnable = 1;
-#endif
-uint32_t taskBlinkRunnable = 1;
-uint32_t taskTextRunnable = 1;
-uint32_t taskReportRunnable = 1;
-#if defined(ESP8266) || defined(ESP32)
-uint32_t taskWebRunnable = 1;
-#endif
+//#if defined(ESP8266) || defined(ESP32)
+//uint32_t taskButtonRunnable = 1;
+//#endif
+//uint32_t taskBlinkRunnable = 1;
+//uint32_t taskTextRunnable = 1;
+//uint32_t taskReportRunnable = 1;
+//#if defined(ESP8266) || defined(ESP32)
+//uint32_t taskWebRunnable = 1;
+//#endif
 
 void loop()
 {
-    //#ifndef ESP8266
-#if defined(ESP8266) || defined(ESP32)
-    if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
-#endif
-    if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
-    if (taskTextRunnable != 0) taskTextRunnable = taskText->run();
-    if (taskReportRunnable != 0) taskReportRunnable = taskReport->run();
-#if defined(ESP8266) || defined(ESP32)
-    if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
-#endif
+    //    //#ifndef ESP8266
+    //#if defined(ESP8266) || defined(ESP32)
+    //    if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
     //#endif
+    //    if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
+    //    if (taskTextRunnable != 0) taskTextRunnable = taskText->run();
+    //    if (taskReportRunnable != 0) taskReportRunnable = taskReport->run();
+    //#if defined(ESP8266) || defined(ESP32)
+    //    if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
+    //#endif
+    //    //#endif
 
-    if (reportCnt == 1) taskReport->sleep(true);
+    // taskReport sleeps on first run(), and after each report.
+    // It resets reportCnt to 0 on each report.
     ++reportCnt;
-    if (reportCnt > 100000) taskReport->sleep(false);
+    if (reportCnt > 200000) {
+        //taskReport->sleep(false);
+        // paranoid check to prevent taskReport from being duplicate scheduling.
+        if (taskReport->sleeping()) scheduleTask(taskReport, true);
+    }
 }
