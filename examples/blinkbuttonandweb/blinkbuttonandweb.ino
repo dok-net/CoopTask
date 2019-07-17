@@ -307,19 +307,19 @@ void setup()
         }, 0x800);
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
-#ifdef ESP8266
-    scheduleTask(taskButton);
-    scheduleTask(taskBlink);
-    scheduleTask(taskText);
-    scheduleTask(taskReport);
-    scheduleTask(taskWeb);
-#endif
+//#ifdef ESP8266
+//    scheduleTask(taskButton);
+//    scheduleTask(taskBlink);
+//    scheduleTask(taskText);
+//    scheduleTask(taskReport);
+//    scheduleTask(taskWeb);
+//#endif
 #endif
 
     Serial.println("Scheduler test");
 }
 
-#ifndef ESP8266
+//#ifndef ESP8266
 #if defined(ESP8266) || defined(ESP32)
 uint32_t taskButtonRunnable = 1;
 #endif
@@ -329,11 +329,11 @@ uint32_t taskReportRunnable = 1;
 #if defined(ESP8266) || defined(ESP32)
 uint32_t taskWebRunnable = 1;
 #endif
-#endif
+//#endif
 
 void loop()
 {
-#ifndef ESP8266
+//#ifndef ESP8266
 #if defined(ESP8266) || defined(ESP32)
     if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
 #endif
@@ -343,17 +343,17 @@ void loop()
 #if defined(ESP8266) || defined(ESP32)
     if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
 #endif
-#endif
+//#endif
 
     // taskReport sleeps on first run(), and after each report.
     // It resets reportCnt to 0 on each report.
     ++reportCnt;
     if (reportCnt > 200000) {
-#ifndef ESP8266
+//#ifndef ESP8266
         taskReport->sleep(false);
-#else
-        // paranoid check to prevent taskReport from being duplicate scheduled.
-        if (taskReport->sleeping()) scheduleTask(taskReport, true);
-#endif
+//#else
+//        // paranoid check to prevent taskReport from being duplicate scheduled.
+//        if (taskReport->sleeping()) scheduleTask(taskReport, true);
+//#endif
     }
 }
