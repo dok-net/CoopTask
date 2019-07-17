@@ -319,36 +319,41 @@ void setup()
     Serial.println("Scheduler test");
 }
 
-//#if defined(ESP8266) || defined(ESP32)
-//uint32_t taskButtonRunnable = 1;
-//#endif
-//uint32_t taskBlinkRunnable = 1;
-//uint32_t taskTextRunnable = 1;
-//uint32_t taskReportRunnable = 1;
-//#if defined(ESP8266) || defined(ESP32)
-//uint32_t taskWebRunnable = 1;
-//#endif
+#ifndef ESP8266
+#if defined(ESP8266) || defined(ESP32)
+uint32_t taskButtonRunnable = 1;
+#endif
+uint32_t taskBlinkRunnable = 1;
+uint32_t taskTextRunnable = 1;
+uint32_t taskReportRunnable = 1;
+#if defined(ESP8266) || defined(ESP32)
+uint32_t taskWebRunnable = 1;
+#endif
+#endif
 
 void loop()
 {
-    //    //#ifndef ESP8266
-    //#if defined(ESP8266) || defined(ESP32)
-    //    if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
-    //#endif
-    //    if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
-    //    if (taskTextRunnable != 0) taskTextRunnable = taskText->run();
-    //    if (taskReportRunnable != 0) taskReportRunnable = taskReport->run();
-    //#if defined(ESP8266) || defined(ESP32)
-    //    if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
-    //#endif
-    //    //#endif
+#ifndef ESP8266
+#if defined(ESP8266) || defined(ESP32)
+    if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
+#endif
+    if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
+    if (taskTextRunnable != 0) taskTextRunnable = taskText->run();
+    if (taskReportRunnable != 0) taskReportRunnable = taskReport->run();
+#if defined(ESP8266) || defined(ESP32)
+    if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
+#endif
+#endif
 
     // taskReport sleeps on first run(), and after each report.
     // It resets reportCnt to 0 on each report.
     ++reportCnt;
     if (reportCnt > 200000) {
-        //taskReport->sleep(false);
-        // paranoid check to prevent taskReport from being duplicate scheduling.
+#ifndef ESP8266
+        taskReport->sleep(false);
+#else
+        // paranoid check to prevent taskReport from being duplicate scheduled.
         if (taskReport->sleeping()) scheduleTask(taskReport, true);
+#endif
     }
 }
