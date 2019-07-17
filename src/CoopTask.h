@@ -61,7 +61,7 @@ protected:
     bool cont = true;
     int _exitCode = 0;
     bool delayed = false;
-    bool sleeping = false;
+    bool sleeps = false;
 
     static CoopTask* current;
 
@@ -100,9 +100,11 @@ public:
 
     bool delayIsMs() { return delay_ms; }
 
-    void sleep(const bool state) { sleeping = state; }
+    void sleep(const bool state) { sleeps = state; }
 
     static bool running() { return current; }
+
+    bool sleeping() { return sleeps; }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,

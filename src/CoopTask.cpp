@@ -101,7 +101,7 @@ bool CoopTask::initialize()
 uint32_t CoopTask::run()
 {
     if (!cont) return 0;
-    if (sleeping) return 1;
+    if (sleeps) return 1;
     if (delayed)
     {
         if (delay_ms)
@@ -139,7 +139,7 @@ uint32_t CoopTask::run()
             ::abort();
         }
         cont &= val > 1;
-        sleeping = val == 3;
+        sleeps = val == 3;
         delayed = val > 3;
     }
     if (!cont) {
