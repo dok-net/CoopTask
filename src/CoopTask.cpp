@@ -18,7 +18,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "CoopTask.h"
+#ifdef ARDUINO
 #include <alloca.h>
+#else
+#include <chrono>
+#endif
 
 // Integration into global yield() and delay()
 #if defined(ESP8266) /* || defined(ESP32) - temporarily disabled until delay() hook is available on platforms */
@@ -31,7 +35,7 @@ extern "C" {
         else __yield();
     }
 }
-#elif !defined(ESP32) // Arduino
+#elif !defined(ESP32) && defined(ARDUINO)
 extern "C" {
     void yield()
     {
@@ -90,13 +94,39 @@ bool CoopTask::initialize()
         {
             reinterpret_cast<uint32_t*>(taskStackTop)[pos] = STACKCOOKIE;
         }
+#if defined(ARDUINO) || defined(__GNUC__)
         char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + sizeof(STACKCOOKIE))));
+#elif defined(_MSC_VER) && defined (_WIN32) && !defined (_WIN64)
+        char* stackBottom = taskStackTop + taskStackSize + sizeof(STACKCOOKIE);
+        __asm mov esp, stackBottom;
+#else
+#error Setting stack pointer is not implemented on this target
+#endif
         //Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
-        _exit(func());
+        CoopTask::exit(func());
     }
     cont = false;
     return false;
 }
+
+#ifndef ARDUINO
+namespace
+{
+    uint32_t millis()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+    uint32_t micros()
+    {
+        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+    void delayMicroseconds(uint32_t us)
+    {
+        const uint32_t start = micros() + us;
+        while (micros() - start < us) {}
+    }
+}
+#endif
 
 uint32_t CoopTask::run()
 {

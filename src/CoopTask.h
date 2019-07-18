@@ -23,10 +23,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #if defined(ESP8266) || defined(ESP32)
 #include <functional>
 #include <csetjmp>
-#else
-#include <setjmp.h>
-#endif
 #include <Arduino.h>
+#elif defined(ARDUINO)
+#include <setjmp.h>
+#include <Arduino.h>
+#else
+#include <functional>
+#include <csetjmp>
+#include <string>
+#endif
 
 class CoopTask
 {
@@ -34,21 +39,27 @@ protected:
     static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
 #if defined(ESP32)
     static constexpr uint32_t MAXSTACKSPACE = 0x2000;
-#elif defined (ESP8266)
+#elif defined(ESP8266)
     static constexpr uint32_t MAXSTACKSPACE = 0x1000;
-#else
+#elif defined(ARDUINO)
     static constexpr uint32_t MAXSTACKSPACE = 0x180;
+#else
+    static constexpr uint32_t MAXSTACKSPACE = 0x10000;
 #endif
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
     static constexpr int32_t DELAYMICROS_THRESHOLD = 50;
 
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     typedef std::function< int() > taskfunc_t;
 #else
     typedef int(*taskfunc_t)();
 #endif
 
+#ifdef ARDUINO
     const String taskName;
+#else
+    const std::string taskName;
+#endif
     taskfunc_t func;
     uint32_t taskStackSize;
     char* taskStackTop = nullptr;
@@ -75,7 +86,11 @@ protected:
     void _delayMicroseconds(uint32_t us);
 
 public:
+#ifdef ARDUINO
     CoopTask(const String& name, taskfunc_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+#else
+    CoopTask(const std::string& name, taskfunc_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+#endif
         taskName(name), func(_func), taskStackSize(stackSize)
     {
     }
@@ -84,7 +99,11 @@ public:
         delete[] taskStackTop;
     }
 
+#ifdef ARDUINO
     const String& name() const { return taskName; }
+#else
+    const std::string& name() const { return taskName; }
+#endif
 
     // @returns: true if the CoopTask object is ready to run, including stack allocation.
     //           false if either initialization has failed, or the task has exited().
@@ -133,6 +152,10 @@ public:
     if (CoopTask::running()) CoopTask::yield(); \
     else ::yield(); \
 }
+#endif
+#ifndef ARDUINO
+inline void delay(uint32_t ms) { CoopTask::delay(ms); }
+inline void yield() { CoopTask::yield(); }
 #endif
 
 #endif // __CoopTask_h
