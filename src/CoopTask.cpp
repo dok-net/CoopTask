@@ -24,9 +24,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <chrono>
 #endif
 
-// Integration into global yield() and delay()
-#if defined(ESP8266) /* || defined(ESP32) - temporarily disabled until delay() hook is available on platforms */
 extern "C" {
+    // Integration into global yield() and delay()
+#if defined(ESP8266) /* || defined(ESP32) - temporarily disabled until delay() hook is available on platforms */
     void __yield();
 
     void yield()
@@ -34,37 +34,30 @@ extern "C" {
         if (CoopTask::running()) CoopTask::yield();
         else __yield();
     }
-}
 #elif !defined(ESP32) && defined(ARDUINO)
-extern "C" {
     void yield()
     {
         if (CoopTask::running()) CoopTask::yield();
-    }}
-#endif
-/* - temporarily disabled until delay() hook is available on platforms
-#if defined(ESP32)
-extern "C" {
-    extern void __delay(uint32_t ms);
-
-    void delay(uint32_t ms)
-    {
-        if (CoopTask::running()) CoopTask::delay(ms);
-        else __delay(ms);
     }
-}
-#elif defined(ESP8266)
-extern "C" {
-    extern void __delay(unsigned long ms);
+#endif
+#if defined(ESP8266)
+    void __delay(unsigned long ms);
 
     void delay(unsigned long ms)
     {
         if (CoopTask::running()) CoopTask::delay(ms);
         else __delay(ms);
     }
-}
+/* #elif defined(ESP32) - temporarily disabled until delay() hook is available on platforms
+    void __delay(uint32_t ms);
+
+    void delay(uint32_t ms)
+    {
+        if (CoopTask::running()) CoopTask::delay(ms);
+        else __delay(ms);
+    } */
 #endif
-*/
+}
 
 CoopTask* CoopTask::current = nullptr;
 

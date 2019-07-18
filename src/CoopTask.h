@@ -141,21 +141,19 @@ public:
 };
 
 // temporary hack until delay() hook is available on platforms
-#if defined(ESP8266) || defined(ESP32)
-#define delay(m) { \
-    if (CoopTask::running()) CoopTask::delay(m); \
-    else ::delay(m); \
-}
-#endif
 #if defined(ESP32)
 #define yield() { \
     if (CoopTask::running()) CoopTask::yield(); \
     else ::yield(); \
 }
+#define delay(m) { \
+    if (CoopTask::running()) CoopTask::delay(m); \
+    else ::delay(m); \
+}
 #endif
 #ifndef ARDUINO
-inline void delay(uint32_t ms) { CoopTask::delay(ms); }
 inline void yield() { CoopTask::yield(); }
+inline void delay(uint32_t ms) { CoopTask::delay(ms); }
 #endif
 
 #endif // __CoopTask_h
