@@ -23,14 +23,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "CoopTask.h"
 #include "circular_queue/circular_queue.h"
 
+/// A semaphore that is safe to use from CoopTasks, or a thread that runs
+/// mutually exclusive to all CoopTasks using the same CoopSemaphore.
+/// Additionally, post() is safe to use from interrupt service routines,
+/// the other, potentially blocking, operations naturally must not be used from one.
 class CoopSemaphore
 {
 protected:
-    unsigned value;
+    std::atomic<unsigned> value;
     std::unique_ptr<circular_queue<CoopTask*>> pendingTasks;
+
 public:
-    /// @param val the initial value of the semaphore
-    /// @param maxPending the maximum supported number of concurrently waiting tasks
+    /// @param val the initial value of the semaphore.
+    /// @param maxPending the maximum supported number of concurrently waiting tasks.
     CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTasks(new circular_queue<CoopTask*>(maxPending)) {}
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
@@ -39,21 +44,25 @@ public:
         // wake up all queued tasks
         pendingTasks->for_each([](CoopTask* task) { task->sleep(false); });
     }
+    /// post() is the only operation that is allowed from an interrupt service routine.
     bool post()
     {
-        if (value++) return true;
+        auto val = 0;
+        while (!value.compare_exchange_weak(val, val + 1)) {}
+        if (val++) return true;
         if (pendingTasks->available()) {
-            --value;
             pendingTasks->pop()->sleep(false);
+	        while (!value.compare_exchange_weak(val, val - 1)) {}
         }
         return true;
     }
     // @returns: true if sucessfully aquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
     bool wait()
     {
-        if (value)
+    	auto val =  value.load();
+        if (val)
         {
-            --value;
+            value.store(val - 1);
             return true;
         }
         if (!pendingTasks->push(&CoopTask::self())) return false;
