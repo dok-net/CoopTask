@@ -121,7 +121,11 @@ public:
 
     void sleep(const bool state) { sleeps = state; }
 
+	// @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() { return current; }
+
+	// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+	static CoopTask& self() { return *current; }
 
     bool sleeping() { return sleeps; }
 
