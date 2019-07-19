@@ -94,6 +94,8 @@ public:
         taskName(name), func(_func), taskStackSize(stackSize)
     {
     }
+    CoopTask(const CoopTask&) = delete;
+    CoopTask& operator=(const CoopTask&) = delete;
     ~CoopTask()
     {
         delete[] taskStackTop;
@@ -115,19 +117,19 @@ public:
     uint32_t getFreeStack();
 
     // @returns: default exit code is 0, using exit() the task can set a different value.
-    int exitCode() { return _exitCode; }
+    int exitCode() const { return _exitCode; }
 
-    bool delayIsMs() { return delay_ms; }
+    bool delayIsMs() const { return delay_ms; }
 
     void sleep(const bool state) { sleeps = state; }
 
-	// @returns: true if called from the task function of a CoopTask, false otherwise.
+    // @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() { return current; }
 
-	// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-	static CoopTask& self() { return *current; }
+    // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+    static CoopTask& self() { return *current; }
 
-    bool sleeping() { return sleeps; }
+    bool sleeping() const { return sleeps; }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
