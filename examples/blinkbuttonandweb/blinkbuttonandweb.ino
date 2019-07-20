@@ -1,4 +1,5 @@
 #include <CoopTask.h>
+#include <CoopSemaphore.h>
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -37,7 +38,7 @@ WebServer server(80);
 #if defined(ESP8266) || defined(ESP32)
 class Button {
 public:
-    Button(uint8_t reqPin) : PIN(reqPin) {
+    Button(uint8_t reqPin) : pushSema(0), PIN(reqPin) {
         pinMode(PIN, INPUT_PULLUP);
         attachInterruptArg(PIN, Button::buttonIsr_static, this, FALLING);
     };
@@ -45,16 +46,19 @@ public:
         detachInterrupt(PIN);
     }
 
+    CoopSemaphore pushSema;
+
     void IRAM_ATTR buttonIsr() {
         numberKeyPresses += 1;
         pressed = true;
+        pushSema.post();
     }
 
     static void IRAM_ATTR buttonIsr_static(void* const self) {
         reinterpret_cast<Button*>(self)->buttonIsr();
     }
 
-    uint32_t checkPressed() {
+    uint32_t testResetPressed() {
         if (pressed) {
             Serial.printf("Button on pin %u has been pressed %u times\n", PIN, numberKeyPresses);
             pressed = false;
@@ -89,17 +93,20 @@ int loopButton() {
     int count = 0;
     for (;;)
     {
-        if (nullptr != button1 && 8000 < (count = button1->checkPressed())) {
-            Serial.println(count);
+        if (!button1->pushSema.wait())
+        {
+            Serial.println("loopButton: wait failed");
+        }
+        else
+        {
+            ++count;
+        }
+        Serial.print("loopButton: count = ");
+        Serial.println(count);
+        if (nullptr != button1 && 8000 < button1->testResetPressed()) {
             delete button1;
             button1 = nullptr;
             CoopTask::exit();
-        }
-        if (preCount != count) {
-
-            Serial.print("loopButton: count = ");
-            Serial.println(count);
-            preCount = count;
         }
         yield();
     }

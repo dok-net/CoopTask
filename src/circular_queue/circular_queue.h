@@ -28,9 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <algorithm>
 #include <functional>
 
-#ifdef ESP32
-#include <esp_attr.h>
-#elif !defined(ESP8266)
+#if !defined(ESP32) && !defined(ESP8266)
 #define ICACHE_RAM_ATTR
 #define IRAM_ATTR
 #endif

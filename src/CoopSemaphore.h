@@ -22,6 +22,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "CoopTask.h"
 #include "circular_queue/circular_queue.h"
+#include <atomic>
+
+#if !defined(ESP32) && !defined(ESP8266)
+#define ICACHE_RAM_ATTR
+#define IRAM_ATTR
+#endif
 
 /// A semaphore that is safe to use from CoopTasks, or a thread that runs
 /// mutually exclusive to all CoopTasks using the same CoopSemaphore.
@@ -45,21 +51,21 @@ public:
         pendingTasks->for_each([](CoopTask* task) { task->sleep(false); });
     }
     /// post() is the only operation that is allowed from an interrupt service routine.
-    bool post()
+    bool IRAM_ATTR post()
     {
-        auto val = 0;
+        unsigned val = 0;
         while (!value.compare_exchange_weak(val, val + 1)) {}
         if (val++) return true;
         if (pendingTasks->available()) {
             pendingTasks->pop()->sleep(false);
-	        while (!value.compare_exchange_weak(val, val - 1)) {}
+            while (!value.compare_exchange_weak(val, val - 1)) {}
         }
         return true;
     }
     // @returns: true if sucessfully aquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
     bool wait()
     {
-    	auto val =  value.load();
+        unsigned val = value.load();
         if (val)
         {
             value.store(val - 1);
