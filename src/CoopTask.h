@@ -33,6 +33,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 #endif
 
+#if !defined(ESP32) && !defined(ESP8266)
+#define ICACHE_RAM_ATTR
+#define IRAM_ATTR
+#endif
+
 class CoopTask
 {
 protected:
@@ -121,7 +126,7 @@ public:
 
     bool delayIsMs() const { return delay_ms; }
 
-    void sleep(const bool state) { sleeps = state; }
+    void IRAM_ATTR sleep(const bool state) { sleeps = state; }
 
     // @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() { return current; }

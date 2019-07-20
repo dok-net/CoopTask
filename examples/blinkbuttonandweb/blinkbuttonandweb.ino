@@ -138,6 +138,7 @@ CoopTask* taskButton;
 #endif
 CoopTask* taskBlink;
 CoopTask* taskText;
+CoopSemaphore reportSema(0);
 CoopTask* taskReport;
 #if defined(ESP8266) || defined(ESP32)
 CoopTask* taskWeb;
@@ -288,7 +289,7 @@ void setup()
         {
             uint32_t start = micros();
             for (;;) {
-                CoopTask::sleep();
+                reportSema.wait();
                 printReport(reportCnt, start);
             }
             return 0;
@@ -357,7 +358,7 @@ void loop()
     ++reportCnt;
     if (reportCnt > 200000) {
 //#ifndef ESP8266
-        taskReport->sleep(false);
+        reportSema.post();
 //#else
 //        // paranoid check to prevent taskReport from being duplicate scheduled.
 //        if (taskReport->sleeping()) scheduleTask(taskReport, true);

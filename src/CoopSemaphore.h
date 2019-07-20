@@ -22,6 +22,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "CoopTask.h"
 #include "circular_queue/circular_queue.h"
+#ifdef ESP8266
+#include <interrupts.h>
+#endif
 #include <atomic>
 
 #if !defined(ESP32) && !defined(ESP8266)
@@ -54,11 +57,27 @@ public:
     bool IRAM_ATTR post()
     {
         unsigned val = 0;
+#ifndef ESP8266
         while (!value.compare_exchange_weak(val, val + 1)) {}
+#else
+        {
+            esp8266::InterruptLock lock;
+            val = value.load();
+            value.store(val + 1);
+        }
+#endif
         if (val++) return true;
         if (pendingTasks->available()) {
             pendingTasks->pop()->sleep(false);
+#ifndef ESP8266
             while (!value.compare_exchange_weak(val, val - 1)) {}
+#else
+            {
+                esp8266::InterruptLock lock;
+                val = value.load();
+                value.store(val - 1);
+            }
+#endif
         }
         return true;
     }
