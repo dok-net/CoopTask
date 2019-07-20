@@ -1,5 +1,7 @@
 #include <CoopTask.h>
+#if defined(ESP8266) || defined(ESP32)
 #include <CoopSemaphore.h>
+#endif
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -138,9 +140,9 @@ CoopTask* taskButton;
 #endif
 CoopTask* taskBlink;
 CoopTask* taskText;
-CoopSemaphore reportSema(0);
 CoopTask* taskReport;
 #if defined(ESP8266) || defined(ESP32)
+CoopSemaphore reportSema(0);
 CoopTask* taskWeb;
 #endif
 
@@ -289,7 +291,11 @@ void setup()
         {
             uint32_t start = micros();
             for (;;) {
+#if defined(ESP8266) ||defined(ESP32)
                 reportSema.wait();
+#else
+                CoopTask::sleep();
+#endif
                 printReport(reportCnt, start);
             }
             return 0;
@@ -357,11 +363,12 @@ void loop()
     // It resets reportCnt to 0 on each report.
     ++reportCnt;
     if (reportCnt > 200000) {
-//#ifndef ESP8266
+#if defined(ESP8266) || defined(ESP32)
         reportSema.post();
-//#else
-//        // paranoid check to prevent taskReport from being duplicate scheduled.
-//        if (taskReport->sleeping()) scheduleTask(taskReport, true);
-//#endif
+#else
+        taskReport->sleep(false);
+        //        // paranoid check to prevent taskReport from being duplicate scheduled.
+        //        if (taskReport->sleeping()) scheduleTask(taskReport, true);
+#endif
     }
 }
