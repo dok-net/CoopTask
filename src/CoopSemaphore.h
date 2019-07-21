@@ -25,7 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef ESP8266
 #include <interrupts.h>
 #endif
+#if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
+#include <util/atomic.h>
+#else
 #include <atomic>
+#endif
 
 #if !defined(ESP32) && !defined(ESP8266)
 #define ICACHE_RAM_ATTR

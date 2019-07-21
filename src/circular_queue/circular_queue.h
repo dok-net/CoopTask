@@ -23,10 +23,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef ARDUINO
 #include <Arduino.h>
 #endif
+#if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
+#include <util/atomic.h>
+#else
 #include <atomic>
 #include <memory>
 #include <algorithm>
 #include <functional>
+#endif
 
 #if !defined(ESP32) && !defined(ESP8266)
 #define ICACHE_RAM_ATTR
@@ -177,8 +181,11 @@ public:
         @brief	Iterate over and remove each available element from queue,
                 calling back fun with an rvalue reference of every single element.
     */
+#if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
+	void for_each(void(*fun)(T&&));
+#else
     void for_each(std::function<void(T&&)> fun);
-
+#endif
 protected:
     const T defaultValue = {};
     unsigned m_bufSize;
