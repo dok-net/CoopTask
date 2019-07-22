@@ -21,13 +21,48 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define __CoopSemaphore_h
 
 #include "CoopTask.h"
-#include "circular_queue/circular_queue.h"
 #ifdef ESP8266
 #include <interrupts.h>
 #endif
 #if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
 #include <util/atomic.h>
+
+namespace esp8266
+{
+    class InterruptLock {
+    public:
+        InterruptLock() {
+            noInterrupts();
+        }
+        ~InterruptLock() {
+            interrupts();
+        }
+    };
+}
+namespace std
+{
+    typedef enum memory_order {
+        //	memory_order_relaxed,
+        //	//memory_order_consume,
+        //	memory_order_acquire,
+        //	memory_order_release,
+        //	//memory_order_acq_rel,
+        memory_order_seq_cst
+    } memory_order;
+    template< typename T > class atomic {
+    private:
+        T value;
+    public:
+        atomic(T desired) { value = desired; }
+        void store(T desired, std::memory_order = std::memory_order_seq_cst) volatile noexcept { value = desired; }
+        T load(std::memory_order = std::memory_order_seq_cst) const volatile noexcept { return value; }
+    };
+    //extern "C" void atomic_thread_fence(std::memory_order) noexcept {}
+    //template< typename T >	T& move(T& t) noexcept { return t; }
+}
+
 #else
+#include "circular_queue/circular_queue.h"
 #include <atomic>
 #endif
 
@@ -36,76 +71,113 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define IRAM_ATTR
 #endif
 
-/// A semaphore that is safe to use from CoopTasks, or a thread that runs
-/// mutually exclusive to all CoopTasks using the same CoopSemaphore.
-/// Additionally, post() is safe to use from interrupt service routines,
-/// the other, potentially blocking, operations naturally must not be used from one.
+/// A semaphore that is safe to use from CoopTasks.
+/// Only post() is safe to use from interrupt service routines,
+/// or concurrent OS threads that must synchronized with the singled thread running CoopTasks.
 class CoopSemaphore
 {
 protected:
     std::atomic<unsigned> value;
+#if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
+    CoopTask** pendingTasks;
+#else
     std::unique_ptr<circular_queue<CoopTask*>> pendingTasks;
+#endif
 
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
+#if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
+    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTasks(new CoopTask* [maxPending]) {}
+#else
     CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTasks(new circular_queue<CoopTask*>(maxPending)) {}
+#endif
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()
     {
         // wake up all queued tasks
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
         pendingTasks->for_each([](CoopTask* task) { task->sleep(false); });
+#endif
     }
-    /// post() is the only operation that is allowed from an interrupt service routine.
+
+    /// post() is the only operation that is allowed from an interrupt service routine,
+    /// or a concurrent OS thread that is synchronized with the singled thread running CoopTasks.
     bool IRAM_ATTR post()
     {
-        unsigned val = 0;
-#ifndef ESP8266
-        while (!value.compare_exchange_weak(val, val + 1)) {}
-#else
+#if !defined(ESP32) && defined(ARDUINO)
         {
             esp8266::InterruptLock lock;
-            val = value.load();
+            unsigned val = value.load();
             value.store(val + 1);
+            if (val) {
+                return true;
+            }
         }
+#else
+        unsigned val = 0;
+        while (!value.compare_exchange_weak(val, val + 1)) {}
+        if (val) return true;
 #endif
-        if (val++) return true;
         if (pendingTasks->available()) {
             pendingTasks->pop()->sleep(false);
-#ifndef ESP8266
-            while (!value.compare_exchange_weak(val, val - 1)) {}
-#else
+#if !defined(ESP32) && defined(ARDUINO)
             {
                 esp8266::InterruptLock lock;
-                val = value.load();
-                value.store(val - 1);
+                value.store(value.load() - 1);
             }
+#else
+            unsigned val = 1;
+            while (!value.compare_exchange_weak(val, val - 1)) {}
 #endif
         }
         return true;
     }
+
     // @returns: true if sucessfully aquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
     bool wait()
     {
-        unsigned val = value.load();
-        if (val)
+#if !defined(ESP32) && defined(ARDUINO)
         {
-            value.store(val - 1);
-            return true;
+            esp8266::InterruptLock lock;
+            unsigned val = value.load();
+            if (val)
+            {
+                value.store(val - 1);
+                return true;
+            }
+            if (!pendingTasks->push(&CoopTask::self())) return false;
+            CoopTask::self().sleep(true);
         }
-        if (!pendingTasks->push(&CoopTask::self())) return false;
         CoopTask::sleep();
+#else
+        unsigned val = value.load();
+        while (val && !value.compare_exchange_weak(val, val - 1)) {}
+        if (!val)
+        {
+            if (!pendingTasks->push(&CoopTask::self())) return false;
+            CoopTask::sleep();
+        }
+#endif
         return true;
     }
+
     bool try_wait()
     {
-        if (value)
+#if !defined(ESP32) && defined(ARDUINO)
         {
-            --value;
-            return true;
+            esp8266::InterruptLock lock;
+            unsigned val = value.load();
+            if (!val) return false;
+            value.store(val - 1);
         }
-        return false;
+        return true;
+#else
+        unsigned val = 1;
+        while (val && !value.compare_exchange_weak(val, val - 1)) {}
+        return val > 0;
+#endif
     }
 };
 
