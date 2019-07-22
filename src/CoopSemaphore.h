@@ -21,49 +21,179 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define __CoopSemaphore_h
 
 #include "CoopTask.h"
-#ifdef ESP8266
+#if defined(ESP8266)
+#include "circular_queue/circular_queue.h"
 #include <interrupts.h>
-#endif
-#if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
+#include <atomic>
+using esp8266::InterruptLock;
+#elif defined(ESP32) || !defined(ARDUINO)
+#include "circular_queue/circular_queue.h"
+#include <atomic>
+#else
 #include <util/atomic.h>
 
-namespace esp8266
-{
-    class InterruptLock {
-    public:
-        InterruptLock() {
-            noInterrupts();
-        }
-        ~InterruptLock() {
-            interrupts();
-        }
-    };
-}
+class InterruptLock {
+public:
+    InterruptLock() {
+        noInterrupts();
+    }
+    ~InterruptLock() {
+        interrupts();
+    }
+};
 namespace std
 {
     typedef enum memory_order {
-        //	memory_order_relaxed,
-        //	//memory_order_consume,
-        //	memory_order_acquire,
-        //	memory_order_release,
-        //	//memory_order_acq_rel,
+        memory_order_relaxed,
+        memory_order_acquire,
+        memory_order_release,
         memory_order_seq_cst
     } memory_order;
     template< typename T > class atomic {
     private:
         T value;
     public:
+        atomic() {}
         atomic(T desired) { value = desired; }
         void store(T desired, std::memory_order = std::memory_order_seq_cst) volatile noexcept { value = desired; }
         T load(std::memory_order = std::memory_order_seq_cst) const volatile noexcept { return value; }
     };
-    //extern "C" void atomic_thread_fence(std::memory_order) noexcept {}
-    //template< typename T >	T& move(T& t) noexcept { return t; }
+    template< typename T > class unique_ptr
+    {
+    public:
+        using pointer = T *;
+        unique_ptr(pointer p) : ptr(p) {}
+        pointer operator->() const noexcept { return ptr; }
+        T& operator[](size_t i) const { return ptr[i]; }
+        void reset() noexcept
+        {
+            delete ptr;
+        }
+    private:
+        pointer ptr;
+    };
+    extern "C" void atomic_thread_fence(std::memory_order) noexcept {}
+    template< typename T >	T& move(T& t) noexcept { return t; }
+    template< typename T > using function = T *;
 }
 
-#else
-#include "circular_queue/circular_queue.h"
-#include <atomic>
+template< typename T >
+class circular_queue
+{
+public:
+    /*!
+        @brief  Constructs a queue of the given maximum capacity.
+    */
+    circular_queue(const size_t capacity) : m_bufSize(capacity + 1), m_buffer(new T[m_bufSize])
+    {
+        m_inPos.store(0);
+        m_outPos.store(0);
+    }
+    ~circular_queue()
+    {
+        m_buffer.reset();
+    }
+    circular_queue(const circular_queue&) = delete;
+    circular_queue& operator=(const circular_queue&) = delete;
+
+    /*!
+        @brief	Get a snapshot number of elements that can be retrieved by pop.
+    */
+    size_t IRAM_ATTR available() const
+    {
+        int avail = static_cast<int>(m_inPos.load() - m_outPos.load());
+        if (avail < 0) avail += m_bufSize;
+        return avail;
+    }
+
+    /*!
+        @brief	Move the rvalue parameter into the queue.
+        @return true if the queue accepted the value, false if the queue
+                was full.
+    */
+    bool IRAM_ATTR push(T&& val);
+
+    /*!
+        @brief	Push a copy of the parameter into the queue.
+        @return true if the queue accepted the value, false if the queue
+                was full.
+    */
+    bool IRAM_ATTR push(const T& val)
+    {
+        return push(T(val));
+    }
+
+    /*!
+        @brief	Pop the next available element from the queue.
+        @return An rvalue copy of the popped element, or a default
+                value of type T if the queue is empty.
+    */
+    T IRAM_ATTR pop();
+
+    /*!
+        @brief	Iterate over and remove each available element from queue,
+                calling back fun with an rvalue reference of every single element.
+    */
+    void for_each(std::function<void(T&)> fun);
+
+protected:
+    const T defaultValue = {};
+    unsigned m_bufSize;
+    std::unique_ptr<T> m_buffer;
+    std::atomic<unsigned> m_inPos;
+    std::atomic<unsigned> m_outPos;
+};
+
+template< typename T >
+bool IRAM_ATTR circular_queue<T>::push(T&& val)
+{
+    const auto inPos = m_inPos.load(std::memory_order_acquire);
+    const unsigned next = (inPos + 1) % m_bufSize;
+    if (next == m_outPos.load(std::memory_order_relaxed)) {
+        return false;
+    }
+
+    std::atomic_thread_fence(std::memory_order_acquire);
+
+    m_buffer[inPos] = std::move(val);
+
+    std::atomic_thread_fence(std::memory_order_release);
+
+    m_inPos.store(next, std::memory_order_release);
+    return true;
+}
+
+template< typename T >
+T IRAM_ATTR circular_queue<T>::pop()
+{
+    const auto outPos = m_outPos.load(std::memory_order_acquire);
+    if (m_inPos.load(std::memory_order_relaxed) == outPos) return defaultValue;
+
+    std::atomic_thread_fence(std::memory_order_acquire);
+
+    auto val = std::move(m_buffer[outPos]);
+
+    std::atomic_thread_fence(std::memory_order_release);
+
+    m_outPos.store((outPos + 1) % m_bufSize, std::memory_order_release);
+    return val;
+}
+
+template< typename T >
+void circular_queue<T>::for_each(std::function<void(T&)> fun)
+{
+    auto outPos = m_outPos.load(std::memory_order_acquire);
+    const auto inPos = m_inPos.load(std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_acquire);
+    while (outPos != inPos)
+    {
+        fun(std::move(m_buffer[outPos]));
+        std::atomic_thread_fence(std::memory_order_release);
+        outPos = (outPos + 1) % m_bufSize;
+        m_outPos.store(outPos, std::memory_order_release);
+    }
+}
+
 #endif
 
 #if !defined(ESP32) && !defined(ESP8266)
@@ -78,28 +208,18 @@ class CoopSemaphore
 {
 protected:
     std::atomic<unsigned> value;
-#if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
-    CoopTask** pendingTasks;
-#else
     std::unique_ptr<circular_queue<CoopTask*>> pendingTasks;
-#endif
-
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
-#if !defined(ESP8266) && !defined(ESP32) && defined(ARDUINO)
-    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTasks(new CoopTask* [maxPending]) {}
-#else
     CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTasks(new circular_queue<CoopTask*>(maxPending)) {}
-#endif
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
         pendingTasks->for_each([](CoopTask* task) { task->sleep(false); });
-#endif
+        pendingTasks.reset();
     }
 
     /// post() is the only operation that is allowed from an interrupt service routine,
@@ -108,7 +228,7 @@ public:
     {
 #if !defined(ESP32) && defined(ARDUINO)
         {
-            esp8266::InterruptLock lock;
+            InterruptLock lock;
             unsigned val = value.load();
             value.store(val + 1);
             if (val) {
@@ -124,7 +244,7 @@ public:
             pendingTasks->pop()->sleep(false);
 #if !defined(ESP32) && defined(ARDUINO)
             {
-                esp8266::InterruptLock lock;
+                InterruptLock lock;
                 value.store(value.load() - 1);
             }
 #else
@@ -140,7 +260,7 @@ public:
     {
 #if !defined(ESP32) && defined(ARDUINO)
         {
-            esp8266::InterruptLock lock;
+            InterruptLock lock;
             unsigned val = value.load();
             if (val)
             {
@@ -167,7 +287,7 @@ public:
     {
 #if !defined(ESP32) && defined(ARDUINO)
         {
-            esp8266::InterruptLock lock;
+            InterruptLock lock;
             unsigned val = value.load();
             if (!val) return false;
             value.store(val - 1);
