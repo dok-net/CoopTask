@@ -279,7 +279,14 @@ public:
             else
             {
                 auto awake = min(posted, static_cast<int>(pendingTasks->available()));
-                while (awake-- > 0) pendingTasks->pop()->sleep(false);
+                while (awake-- > 0)
+                {
+#ifdef ESP8266
+                    scheduleTask(pendingTasks->pop(), true);
+#else
+                    pendingTasks->pop()->sleep(false);
+#endif
+                }
                 return true;
             }
             val = value.load();

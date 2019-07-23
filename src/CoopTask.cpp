@@ -24,6 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <chrono>
 #endif
 
+#ifdef ESP8266
+#include <Schedule.h>
+#endif
+
 extern "C" {
     // Integration into global yield() and delay()
 #if defined(ESP8266) /* || defined(ESP32) - temporarily disabled until delay() hook is available on platforms */
@@ -48,14 +52,16 @@ extern "C" {
         if (CoopTask::running()) CoopTask::delay(ms);
         else __delay(ms);
     }
-/* #elif defined(ESP32) - temporarily disabled until delay() hook is available on platforms
+/*
+#elif defined(ESP32) - temporarily disabled until delay() hook is available on platforms
     void __delay(uint32_t ms);
 
     void delay(uint32_t ms)
     {
         if (CoopTask::running()) CoopTask::delay(ms);
         else __delay(ms);
-    } */
+    }
+*/
 #endif
 }
 
@@ -237,3 +243,40 @@ void CoopTask::_delayMicroseconds(uint32_t us)
     // CoopTask::run() defers task until delay_exp is reached
     doYield(4);
 }
+
+#ifdef ESP8266
+bool rescheduleTask(CoopTask* task, uint32_t repeat_us)
+{
+    if (task->sleeping())
+        return false;
+    auto stat = task->run();
+    switch (stat)
+    {
+    case 0: // exited.
+        return false;
+        break;
+    case 1: // runnable or sleeping.
+        if (task->sleeping()) return false;
+        if (!repeat_us) return true;
+        schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
+        return false;
+        break;
+    default: // delayed until millis() or micros() deadline, check delayIsMs().
+        if (task->sleeping()) return false;
+        auto next_repeat_us = static_cast<int32_t>(task->delayIsMs() ? (stat - millis()) * 1000 : stat - micros());
+        if (next_repeat_us < 0) next_repeat_us = 0;
+        if (static_cast<uint32_t>(next_repeat_us) == repeat_us) return true;
+        schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us);
+        return false;
+        break;
+    }
+    return false;
+}
+
+bool scheduleTask(CoopTask* task, bool wakeup)
+{
+    if (wakeup)
+        task->sleep(false);
+    return schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
+}
+#endif

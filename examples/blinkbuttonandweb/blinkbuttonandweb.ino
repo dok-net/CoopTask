@@ -7,8 +7,6 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 
-#include <Schedule.h>
-
 ESP8266WebServer server(80);
 #elif defined(ESP32)
 #include <WiFi.h>
@@ -174,43 +172,6 @@ void printReport(uint32_t& reportCnt, uint32_t& start)
     reportCnt = 0;
     start = micros();
 };
-
-#ifdef ESP8266
-bool rescheduleTask(CoopTask* task, uint32_t repeat_us)
-{
-    if (task->sleeping())
-        return false;
-    auto stat = task->run();
-    switch (stat)
-    {
-    case 0: // exited.
-        return false;
-        break;
-    case 1: // runnable or sleeping.
-        if (task->sleeping()) return false;
-        if (!repeat_us) return true;
-        schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
-        return false;
-        break;
-    default: // delayed until millis() or micros() deadline, check delayIsMs().
-        if (task->sleeping()) return false;
-        auto next_repeat_us = static_cast<int32_t>(task->delayIsMs() ? (stat - millis()) * 1000 : stat - micros());
-        if (next_repeat_us < 0) next_repeat_us = 0;
-        if (next_repeat_us == repeat_us) return true;
-        schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us);
-        return false;
-        break;
-    }
-    return false;
-}
-
-bool scheduleTask(CoopTask* task, bool wakeup = false)
-{
-    if (wakeup)
-        task->sleep(false);
-    schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
-}
-#endif
 
 uint32_t reportCnt = 0;
 

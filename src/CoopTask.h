@@ -151,6 +151,11 @@ public:
     static void delayMicroseconds(uint32_t us) { current->_delayMicroseconds(us); }
 };
 
+#ifdef ESP8266
+bool rescheduleTask(CoopTask* task, uint32_t repeat_us);
+bool scheduleTask(CoopTask* task, bool wakeup = false);
+#endif
+
 // temporary hack until delay() hook is available on platforms
 #if defined(ESP32)
 #define yield() { \
