@@ -162,8 +162,8 @@ uint32_t CoopTask::run()
             ::abort();
         }
         cont &= val > 1;
-        sleeps = val == 3;
-        delayed = val > 3;
+        sleeps |= val == 3;
+        delayed |= val > 3;
     }
     if (!cont) {
         delete[] taskStackTop;
