@@ -272,11 +272,20 @@ bool rescheduleTask(CoopTask* task, uint32_t repeat_us)
     }
     return false;
 }
-
-bool scheduleTask(CoopTask* task, bool wakeup)
-{
-    if (wakeup)
-        task->sleep(false);
-    return schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
-}
 #endif
+
+bool IRAM_ATTR scheduleTask(CoopTask* task, bool wakeup)
+{
+#ifdef ESP8266
+    return schedule_function([task, wakeup]() {
+        if (wakeup)
+            task->sleep(false);
+        if (rescheduleTask(task, 0)) {
+            schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
+        }
+        });
+#else
+    task->sleep(!wakeup);
+    return true;
+#endif
+}

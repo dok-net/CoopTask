@@ -209,11 +209,12 @@ class CoopSemaphore
 {
 protected:
     std::atomic<int> value;
+    std::atomic<CoopTask*> pendingTask0;
     std::unique_ptr<circular_queue<CoopTask*>> pendingTasks;
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
-    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTasks(new circular_queue<CoopTask*>(maxPending)) {}
+    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<CoopTask*>(maxPending)) {}
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()
@@ -227,16 +228,21 @@ public:
     /// or a concurrent OS thread that is synchronized with the singled thread running CoopTasks.
     bool IRAM_ATTR post()
     {
+        CoopTask* pendingTask;
 #if !defined(ESP32) && defined(ARDUINO)
         {
             InterruptLock lock;
             int val = value.load();
             value.store(val + 1);
+            pendingTask = pendingTask0.load();
+            pendingTask0.store(nullptr);
         }
 #else
         int val = 0;
         while (!value.compare_exchange_weak(val, val + 1)) {}
+        pendingTask = pendingTask0.exchange(nullptr);
 #endif
+        if (pendingTask) scheduleTask(pendingTask, true);
         return true;
     }
 
@@ -261,10 +267,20 @@ public:
             int posted = 1 + pendingTasks->available() + val;
             if (posted == 0)
             {
+                CoopTask::self().sleep(true);
 #if !defined(ESP32) && defined(ARDUINO)
+                {
+                    InterruptLock lock;
+                    pendingTask0.store(&CoopTask::self());
+                }
                 CoopTask::yield();
 #else
+                pendingTask0.exchange(&CoopTask::self());
+#ifdef ESP32
                 yield();
+#else
+                CoopTask::yield();
+#endif
 #endif
             }
             else if (posted < 0)
@@ -282,11 +298,7 @@ public:
                 while (awake-- > 0)
                 {
                     auto task = pendingTasks->pop();
-//#ifdef ESP8266
-//                    scheduleTask(task, true);
-//#else
-                    task->sleep(false);
-//#endif
+                    scheduleTask(task, true);
                 }
                 return true;
             }

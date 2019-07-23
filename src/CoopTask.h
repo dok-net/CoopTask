@@ -153,8 +153,8 @@ public:
 
 #ifdef ESP8266
 bool rescheduleTask(CoopTask* task, uint32_t repeat_us);
-bool scheduleTask(CoopTask* task, bool wakeup = false);
 #endif
+bool scheduleTask(CoopTask* task, bool wakeup = false);
 
 // temporary hack until delay() hook is available on platforms
 #if defined(ESP32)
