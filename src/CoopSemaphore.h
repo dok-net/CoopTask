@@ -282,11 +282,11 @@ public:
                 while (awake-- > 0)
                 {
                     auto task = pendingTasks->pop();
-#ifdef ESP8266
-                    scheduleTask(task, true);
-#else
+//#ifdef ESP8266
+//                    scheduleTask(task, true);
+//#else
                     task->sleep(false);
-#endif
+//#endif
                 }
                 return true;
             }
