@@ -130,7 +130,7 @@ namespace
 uint32_t CoopTask::run()
 {
     if (!cont) return 0;
-    if (sleeps) return 1;
+    if (sleeps.load()) return 1;
     if (delayed)
     {
         if (delay_ms)
@@ -168,7 +168,7 @@ uint32_t CoopTask::run()
             ::abort();
         }
         cont &= val > 1;
-        sleeps |= val == 3;
+        sleeps.store(sleeps.load() | (val == 3));
         delayed |= val > 3;
     }
     if (!cont) {

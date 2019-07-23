@@ -33,6 +33,33 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 #endif
 
+#if defined(ESP8266)
+#include <atomic>
+#elif defined(ESP32) || !defined(ARDUINO)
+#include <atomic>
+#else
+#include <util/atomic.h>
+
+namespace std
+{
+    typedef enum memory_order {
+        memory_order_relaxed,
+        memory_order_acquire,
+        memory_order_release,
+        memory_order_seq_cst
+    } memory_order;
+    template< typename T > class atomic {
+    private:
+        T value;
+    public:
+        atomic() {}
+        atomic(T desired) { value = desired; }
+        void store(T desired, std::memory_order = std::memory_order_seq_cst) volatile noexcept { value = desired; }
+        T load(std::memory_order = std::memory_order_seq_cst) const volatile noexcept { return value; }
+    };
+}
+#endif
+
 #if !defined(ESP32) && !defined(ESP8266)
 #define ICACHE_RAM_ATTR
 #define IRAM_ATTR
@@ -77,7 +104,7 @@ protected:
     bool cont = true;
     int _exitCode = 0;
     bool delayed = false;
-    bool sleeps = false;
+    std::atomic<bool> sleeps;
 
     static CoopTask* current;
 
@@ -96,7 +123,7 @@ public:
 #else
     CoopTask(const std::string& name, taskfunc_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
-        taskName(name), func(_func), taskStackSize(stackSize)
+        taskName(name), func(_func), taskStackSize(stackSize), sleeps(false)
     {
     }
     CoopTask(const CoopTask&) = delete;
@@ -126,7 +153,7 @@ public:
 
     bool delayIsMs() const { return delay_ms; }
 
-    void IRAM_ATTR sleep(const bool state) { sleeps = state; }
+    void IRAM_ATTR sleep(const bool state) { sleeps.store(state); }
 
     // @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() { return current; }
@@ -134,7 +161,7 @@ public:
     // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
     static CoopTask& self() { return *current; }
 
-    bool sleeping() const { return sleeps; }
+    bool sleeping() const { return sleeps.load(); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,

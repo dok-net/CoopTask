@@ -24,15 +24,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #if defined(ESP8266)
 #include "circular_queue/circular_queue.h"
 #include <interrupts.h>
-#include <atomic>
 using esp8266::InterruptLock;
 #elif defined(ESP32) || !defined(ARDUINO)
 #include "circular_queue/circular_queue.h"
-#include <atomic>
 using std::min;
 #else
-#include <util/atomic.h>
-
 class InterruptLock {
 public:
     InterruptLock() {
@@ -44,21 +40,6 @@ public:
 };
 namespace std
 {
-    typedef enum memory_order {
-        memory_order_relaxed,
-        memory_order_acquire,
-        memory_order_release,
-        memory_order_seq_cst
-    } memory_order;
-    template< typename T > class atomic {
-    private:
-        T value;
-    public:
-        atomic() {}
-        atomic(T desired) { value = desired; }
-        void store(T desired, std::memory_order = std::memory_order_seq_cst) volatile noexcept { value = desired; }
-        T load(std::memory_order = std::memory_order_seq_cst) const volatile noexcept { return value; }
-    };
     template< typename T > class unique_ptr
     {
     public:
