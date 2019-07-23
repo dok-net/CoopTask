@@ -281,10 +281,11 @@ public:
                 auto awake = min(posted, static_cast<int>(pendingTasks->available()));
                 while (awake-- > 0)
                 {
+                    auto task = pendingTasks->pop();
 #ifdef ESP8266
-                    scheduleTask(pendingTasks->pop(), true);
+                    scheduleTask(task, true);
 #else
-                    pendingTasks->pop()->sleep(false);
+                    task->sleep(false);
 #endif
                 }
                 return true;
