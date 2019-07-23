@@ -29,6 +29,7 @@ using esp8266::InterruptLock;
 #elif defined(ESP32) || !defined(ARDUINO)
 #include "circular_queue/circular_queue.h"
 #include <atomic>
+using std::min;
 #else
 #include <util/atomic.h>
 
@@ -207,7 +208,7 @@ void circular_queue<T>::for_each(std::function<void(T&)> fun)
 class CoopSemaphore
 {
 protected:
-    std::atomic<unsigned> value;
+    std::atomic<int> value;
     std::unique_ptr<circular_queue<CoopTask*>> pendingTasks;
 public:
     /// @param val the initial value of the semaphore.
@@ -229,58 +230,56 @@ public:
 #if !defined(ESP32) && defined(ARDUINO)
         {
             InterruptLock lock;
-            unsigned val = value.load();
+            int val = value.load();
             value.store(val + 1);
-            if (val) {
-                return true;
-            }
         }
 #else
-        unsigned val = 0;
+        int val = 0;
         while (!value.compare_exchange_weak(val, val + 1)) {}
-        if (val) return true;
 #endif
-        if (pendingTasks->available()) {
-            pendingTasks->pop()->sleep(false);
-#if !defined(ESP32) && defined(ARDUINO)
-            {
-                InterruptLock lock;
-                value.store(value.load() - 1);
-            }
-#else
-            unsigned val = 1;
-            while (!value.compare_exchange_weak(val, val - 1)) {}
-#endif
-        }
         return true;
     }
 
     // @returns: true if sucessfully aquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
     bool wait()
     {
+        int val;
 #if !defined(ESP32) && defined(ARDUINO)
         {
             InterruptLock lock;
-            unsigned val = value.load();
-            if (val)
+            val = value.load();
+            value.store(val - 1);
+        }
+#else
+        val = 1;
+        while (!value.compare_exchange_weak(val, val - 1)) {}
+#endif
+        if (val > 0) return true;
+        --val;
+        for (;;)
+        {
+            int posted = 1 + pendingTasks->available() + val;
+            if (posted == 0)
             {
-                value.store(val - 1);
+#if !defined(ESP32) && defined(ARDUINO)
+                CoopTask::yield();
+#else
+                yield();
+#endif
+            }
+            else if (posted < 0)
+            {
+                pendingTasks->push(&CoopTask::self());
+                CoopTask::sleep();
+            }
+            else
+            {
+                auto awake = min(posted, static_cast<int>(pendingTasks->available()));
+                while (awake-- > 0) pendingTasks->pop()->sleep(false);
                 return true;
             }
-            if (!pendingTasks->push(&CoopTask::self())) return false;
-            CoopTask::self().sleep(true);
+            val = value.load();
         }
-        CoopTask::sleep();
-#else
-        unsigned val = value.load();
-        while (val && !value.compare_exchange_weak(val, val - 1)) {}
-        if (!val)
-        {
-            if (!pendingTasks->push(&CoopTask::self())) return false;
-            CoopTask::sleep();
-        }
-#endif
-        return true;
     }
 
     bool try_wait()
@@ -288,13 +287,13 @@ public:
 #if !defined(ESP32) && defined(ARDUINO)
         {
             InterruptLock lock;
-            unsigned val = value.load();
+            auto val = value.load();
             if (!val) return false;
             value.store(val - 1);
         }
         return true;
 #else
-        unsigned val = 1;
+        int val = 1;
         while (val && !value.compare_exchange_weak(val, val - 1)) {}
         return val > 0;
 #endif
