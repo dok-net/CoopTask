@@ -96,6 +96,8 @@ int loopButton() {
         if (!button1->pushSema.wait())
         {
             Serial.println("loopButton: wait failed");
+            yield();
+            continue;
         }
         else
         {
@@ -290,7 +292,12 @@ void setup()
             uint32_t start = micros();
             for (;;) {
 #if defined(ESP8266) ||defined(ESP32)
-                reportSema.wait();
+                if (!reportSema.wait())
+                {
+                    Serial.println("report: wait failed");
+                    yield();
+                    continue;
+            }
 #else
                 CoopTask::sleep();
 #endif

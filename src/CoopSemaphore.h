@@ -269,7 +269,11 @@ public:
             }
             else if (posted < 0)
             {
-                pendingTasks->push(&CoopTask::self());
+                if (!pendingTasks->push(&CoopTask::self()))
+                {
+                    post();
+                    return false;
+                }
                 CoopTask::sleep();
             }
             else
