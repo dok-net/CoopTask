@@ -81,7 +81,7 @@ public:
     /*!
         @brief	Get a snapshot number of elements that can be retrieved by pop.
     */
-    size_t IRAM_ATTR available() const
+    size_t available() const
     {
         int avail = static_cast<int>(m_inPos.load() - m_outPos.load());
         if (avail < 0) avail += m_bufSize;
@@ -110,7 +110,7 @@ public:
         @return An rvalue copy of the popped element, or a default
                 value of type T if the queue is empty.
     */
-    T IRAM_ATTR pop();
+    T pop();
 
     /*!
         @brief	Iterate over and remove each available element from queue,
@@ -146,7 +146,7 @@ bool IRAM_ATTR circular_queue<T>::push(T&& val)
 }
 
 template< typename T >
-T IRAM_ATTR circular_queue<T>::pop()
+T circular_queue<T>::pop()
 {
     const auto outPos = m_outPos.load(std::memory_order_acquire);
     if (m_inPos.load(std::memory_order_relaxed) == outPos) return defaultValue;
