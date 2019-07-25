@@ -201,7 +201,7 @@ public:
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-        pendingTasks->for_each([](CoopTask* task) { task->sleep(false); });
+        pendingTasks->for_each([](CoopTask*&& task) { task->sleep(false); });
         pendingTasks.reset();
     }
 
