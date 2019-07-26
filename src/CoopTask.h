@@ -82,9 +82,9 @@ protected:
     static constexpr int32_t DELAYMICROS_THRESHOLD = 50;
 
 #if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
-    typedef std::function< int() > taskfunc_t;
+    using taskfunction_t = std::function< int() noexcept >;
 #else
-    typedef int(*taskfunc_t)();
+    using taskfunction_t = int(*)() noexcept;
 #endif
 
 #ifdef ARDUINO
@@ -92,7 +92,7 @@ protected:
 #else
     const std::string taskName;
 #endif
-    taskfunc_t func;
+    taskfunction_t func;
     uint32_t taskStackSize;
     char* taskStackTop = nullptr;
     jmp_buf env;
@@ -119,9 +119,9 @@ protected:
 
 public:
 #ifdef ARDUINO
-    CoopTask(const String& name, taskfunc_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    CoopTask(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #else
-    CoopTask(const std::string& name, taskfunc_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    CoopTask(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
         taskName(name), func(_func), taskStackSize(stackSize), sleeps(false)
     {
