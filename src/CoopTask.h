@@ -27,6 +27,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #elif defined(ARDUINO)
 #include <setjmp.h>
 #include <Arduino.h>
+#elif defined(_MSC_VER)
+#include <functional>
+#include <Windows.h>
+#include <string>
 #else
 #include <functional>
 #include <csetjmp>
@@ -94,9 +98,16 @@ protected:
 #endif
     taskfunction_t func;
     uint32_t taskStackSize;
+#ifndef _MSC_VER
     char* taskStackTop = nullptr;
     jmp_buf env;
     jmp_buf env_yield;
+#else
+    static LPVOID primaryFiber;
+    LPVOID taskFiber;
+    int val;
+    static void __stdcall taskFiberFunc(void*);
+#endif
     // true: delay_exp is vs. millis(); false: delay_exp is vs. micros().
     bool delay_ms = false;
     uint32_t delay_exp = 0;
@@ -130,7 +141,9 @@ public:
     CoopTask& operator=(const CoopTask&) = delete;
     ~CoopTask()
     {
+#ifndef _MSC_VER
         delete[] taskStackTop;
+#endif
     }
 
 #ifdef ARDUINO

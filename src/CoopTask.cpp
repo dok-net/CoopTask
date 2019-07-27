@@ -67,6 +67,27 @@ extern "C" {
 
 CoopTask* CoopTask::current = nullptr;
 
+#ifndef ARDUINO
+namespace
+{
+    uint32_t millis()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+    uint32_t micros()
+    {
+        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+    void delayMicroseconds(uint32_t us)
+    {
+        const uint32_t start = micros() + us;
+        while (micros() - start < us) {}
+    }
+}
+#endif
+
+#ifndef _MSC_VER
+
 CoopTask::operator bool()
 {
     if (!cont) return false;
@@ -108,25 +129,6 @@ bool CoopTask::initialize()
     return false;
 }
 
-#ifndef ARDUINO
-namespace
-{
-    uint32_t millis()
-    {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    }
-    uint32_t micros()
-    {
-        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    }
-    void delayMicroseconds(uint32_t us)
-    {
-        const uint32_t start = micros() + us;
-        while (micros() - start < us) {}
-    }
-}
-#endif
-
 uint32_t CoopTask::run()
 {
     if (!cont) return 0;
@@ -157,7 +159,7 @@ uint32_t CoopTask::run()
             ::abort();
         }
 
-        longjmp(env_yield, 0);
+        longjmp(env_yield, 1);
     }
     else
     {
@@ -188,8 +190,85 @@ uint32_t CoopTask::run()
     }
 }
 
+#else // _MSC_VER
+
+LPVOID CoopTask::primaryFiber = nullptr;
+
+CoopTask::operator bool()
+{
+    return cont;
+}
+
+void __stdcall CoopTask::taskFiberFunc(void*)
+{
+    CoopTask::exit(current->func());
+}
+
+bool CoopTask::initialize()
+{
+    if (!cont || init) return false;
+    init = true;
+    if (*this)
+    {
+        if (!primaryFiber) primaryFiber = ConvertThreadToFiber(nullptr);
+        if (primaryFiber)
+        {
+            taskFiber = CreateFiber(taskStackSize, taskFiberFunc, nullptr);
+            if (taskFiber) return true;
+        }
+    }
+    cont = false;
+    return false;
+}
+
+uint32_t CoopTask::run()
+{
+    if (!cont) return 0;
+    if (sleeps.load()) return 1;
+    if (delayed)
+    {
+        if (delay_ms)
+        {
+            int32_t delay_rem = static_cast<int32_t>(delay_exp - millis());
+            if (delay_rem > 0) return delay_rem;
+        }
+        else
+        {
+            int32_t delay_rem = static_cast<int32_t>(delay_exp - micros());
+            if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
+            if (delay_rem > 0) ::delayMicroseconds(delay_rem);
+        }
+        delayed = false;
+    }
+    current = this;
+    if (!init && !initialize()) return false;
+    SwitchToFiber(taskFiber);
+    current = nullptr;
+
+    cont &= val > 1;
+    sleeps.store(sleeps.load() | (val == 3));
+    delayed |= val > 3;
+
+    if (!cont) {
+        return 0;
+    }
+    switch (val)
+    {
+    case 2:
+    case 3:
+        return 1;
+        break;
+    default:
+        return delay_exp > 2 ? delay_exp : 2;
+        break;
+    }
+}
+
+#endif // _MSC_VER
+
 uint32_t CoopTask::getFreeStack()
 {
+#ifndef _MSC_VER
     if (!taskStackTop) return 0;
     uint32_t pos;
     for (pos = 1; pos < (taskStackSize + sizeof(STACKCOOKIE)) / sizeof(uint32_t); ++pos)
@@ -198,20 +277,33 @@ uint32_t CoopTask::getFreeStack()
             break;
     }
     return (pos - 1) * sizeof(uint32_t);
+#else // _MSC_VER
+    return taskStackSize;
+#endif // _MSC_VER
 }
 
 void CoopTask::doYield(uint32_t val)
 {
+#ifndef _MSC_VER
     if (!setjmp(env_yield))
     {
         longjmp(env, val);
     }
+#else // _MSC_VER
+    current->val = val;
+    SwitchToFiber(primaryFiber);
+#endif // _MSC_VER
 }
 
 void CoopTask::_exit(int code)
 {
     _exitCode = code;
+#ifndef _MSC_VER
     longjmp(env, 1);
+#else // _MSC_VER
+    current->val = 1;
+    SwitchToFiber(primaryFiber);
+#endif // _MSC_VER
 }
 
 void CoopTask::_yield()
