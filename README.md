@@ -1,6 +1,6 @@
 # CoopTask
 An all-C++ implementation of a cooperative multitasking layer for ESP8266/ESP32,
-Arduino boards, Linux, and Windows x86 (disable C++ exceptions on MSVC compiler)
+Arduino boards, Linux, and Windows x86 and x86_64
 
 During regular development it's built and tested on the ESP MCUs and
 Arduino Pro/Pro Mini.
