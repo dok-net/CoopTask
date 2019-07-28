@@ -349,35 +349,31 @@ bool rescheduleTask(CoopTask* task, uint32_t repeat_us)
         break;
     case 1: // runnable or sleeping.
         if (task->sleeping()) return false;
-        if (!repeat_us) return true;
-        schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
-        return false;
+        if (repeat_us) {
+            schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
+            return false;
+        }
         break;
     default: // delayed until millis() or micros() deadline, check delayIsMs().
         if (task->sleeping()) return false;
         auto next_repeat_us = static_cast<int32_t>(task->delayIsMs() ? (stat - millis()) * 1000 : stat - micros());
         if (next_repeat_us < 0) next_repeat_us = 0;
-        if (static_cast<uint32_t>(next_repeat_us) == repeat_us) return true;
-        schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us);
-        return false;
+        if (static_cast<uint32_t>(next_repeat_us) != repeat_us) {
+            schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us);
+            return false;
+        }
         break;
     }
-    return false;
+    return true;
 }
 #endif
 
 bool IRAM_ATTR scheduleTask(CoopTask* task, bool wakeup)
 {
+    if (wakeup) task->sleep(false);
 #ifdef ESP8266
-    return schedule_function([task, wakeup]() {
-        if (wakeup)
-            task->sleep(false);
-        if (rescheduleTask(task, 0)) {
-            schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
-        }
-        });
+    return schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
 #else
-    task->sleep(!wakeup);
     return true;
 #endif
 }

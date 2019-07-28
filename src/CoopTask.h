@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #if defined(ESP8266) || defined(ESP32)
 #include <functional>
+#include <memory>
 #include <csetjmp>
 #include <Arduino.h>
 #elif defined(ARDUINO)
@@ -46,6 +47,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 namespace std
 {
+    template< typename T > class unique_ptr
+    {
+    public:
+        using pointer = T *;
+        unique_ptr() noexcept : ptr(nullptr) {}
+        unique_ptr(pointer p) : ptr(p) {}
+        pointer operator->() const noexcept { return ptr; }
+        T& operator[](size_t i) const { return ptr[i]; }
+        void reset(pointer p = pointer()) noexcept
+        {
+            delete ptr;
+            ptr = p;
+        }
+        T& operator*() const { return *ptr; }
+    private:
+        pointer ptr;
+    };
+
     typedef enum memory_order {
         memory_order_relaxed,
         memory_order_acquire,
@@ -194,7 +213,7 @@ public:
 #ifdef ESP8266
 bool rescheduleTask(CoopTask* task, uint32_t repeat_us);
 #endif
-bool scheduleTask(CoopTask* task, bool wakeup = false);
+bool IRAM_ATTR scheduleTask(CoopTask* task, bool wakeup = false);
 
 // temporary hack until delay() hook is available on platforms
 #if defined(ESP32)

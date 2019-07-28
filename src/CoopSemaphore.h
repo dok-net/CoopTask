@@ -40,20 +40,6 @@ public:
 };
 namespace std
 {
-    template< typename T > class unique_ptr
-    {
-    public:
-        using pointer = T *;
-        unique_ptr(pointer p) : ptr(p) {}
-        pointer operator->() const noexcept { return ptr; }
-        T& operator[](size_t i) const { return ptr[i]; }
-        void reset() noexcept
-        {
-            delete ptr;
-        }
-    private:
-        pointer ptr;
-    };
     extern "C" void atomic_thread_fence(std::memory_order) noexcept {}
     template< typename T >	T& move(T& t) noexcept { return t; }
     template< typename T > using function = T *;
