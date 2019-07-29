@@ -37,7 +37,7 @@ int loopBlink()
     return 0;
 }
 
-CoopTask* taskBlink;
+CoopTask<>* taskBlink;
 
 void setup()
 {
@@ -45,9 +45,9 @@ void setup()
     delay(500);
 
 #if defined(ESP8266) || defined(ESP32)
-    taskBlink = new CoopTask(F("Blink"), loopBlink, 0x240);
+    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x240);
 #else
-    taskBlink = new CoopTask(F("Blink"), loopBlink, 0x40);
+    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x40);
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 

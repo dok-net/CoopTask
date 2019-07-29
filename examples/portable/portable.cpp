@@ -7,7 +7,7 @@
 #include "CoopTask.h"
 #include "CoopSemaphore.h"
 
-void printStackReport(CoopTask& task)
+void printStackReport(CoopTask<>& task)
 {
     if (!task) return;
     std::cerr << task.name().c_str() << " free stack = " << task.getFreeStack() << std::endl;
@@ -17,7 +17,7 @@ int main()
 {
     CoopSemaphore terminatorSema(0);
 
-    CoopTask hello(std::string("hello"), [&terminatorSema]()
+    CoopTask<> hello(std::string("hello"), [&terminatorSema]()
         {
             std::cerr << "Hello" << std::endl;
             yield();
@@ -34,7 +34,7 @@ int main()
 
     bool keepBlinking = true;
 
-    CoopTask terminator(std::string("terminator"), [&keepBlinking, &terminatorSema]()
+    CoopTask<> terminator(std::string("terminator"), [&keepBlinking, &terminatorSema]()
         {
             if (!terminatorSema.wait()) std::cerr << "terminatorSema.wait() failed" << std::endl;
             keepBlinking = false;
@@ -42,7 +42,7 @@ int main()
         }, 0x2000);
     if (!terminator) std::cerr << terminator.name() << " CoopTask not created" << std::endl;
 
-    CoopTask blink(std::string("blink"), [&keepBlinking]()
+    CoopTask<> blink(std::string("blink"), [&keepBlinking]()
         {
             while (keepBlinking)
             {
@@ -55,7 +55,7 @@ int main()
         }, 0x2000);
     if (!blink) std::cerr << blink.name() << " CoopTask not created" << std::endl;
 
-    CoopTask report(std::string("report"), [&hello, &blink]()
+    CoopTask<> report(std::string("report"), [&hello, &blink]()
         {
             for (;;) {
                 delay(5000);

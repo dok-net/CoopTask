@@ -41,7 +41,6 @@ public:
 namespace std
 {
     extern "C" void atomic_thread_fence(std::memory_order) noexcept {}
-    template< typename T >	T& move(T& t) noexcept { return t; }
     template< typename T > using function = T *;
 }
 
@@ -176,18 +175,18 @@ class CoopSemaphore
 {
 protected:
     std::atomic<int> value;
-    std::atomic<CoopTask*> pendingTask0;
-    std::unique_ptr<circular_queue<CoopTask*>> pendingTasks;
+    std::atomic<BasicCoopTask*> pendingTask0;
+    std::unique_ptr<circular_queue<BasicCoopTask*>> pendingTasks;
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
-    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<CoopTask*>(maxPending)) {}
+    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<BasicCoopTask*>(maxPending)) {}
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-        pendingTasks->for_each([](CoopTask*&& task) { task->sleep(false); });
+        pendingTasks->for_each([](BasicCoopTask*&& task) { task->sleep(false); });
         pendingTasks.reset();
     }
 
@@ -195,7 +194,7 @@ public:
     /// or a concurrent OS thread that is synchronized with the singled thread running CoopTasks.
     bool IRAM_ATTR post()
     {
-        CoopTask* pendingTask;
+        BasicCoopTask* pendingTask;
 #if !defined(ESP32) && defined(ARDUINO)
         {
             InterruptLock lock;
@@ -234,30 +233,30 @@ public:
             int posted = 1 + pendingTasks->available() + val;
             if (posted == 0)
             {
-                CoopTask::self().sleep(true);
+                BasicCoopTask::self().sleep(true);
 #if !defined(ESP32) && defined(ARDUINO)
                 {
                     InterruptLock lock;
-                    pendingTask0.store(&CoopTask::self());
+                    pendingTask0.store(&BasicCoopTask::self());
                 }
-                CoopTask::yield();
+                BasicCoopTask::yield();
 #else
-                pendingTask0.exchange(&CoopTask::self());
+                pendingTask0.exchange(&BasicCoopTask::self());
 #ifdef ESP32
                 yield();
 #else
-                CoopTask::yield();
+                BasicCoopTask::yield();
 #endif
 #endif
             }
             else if (posted < 0)
             {
-                if (!pendingTasks->push(&CoopTask::self()))
+                if (!pendingTasks->push(&BasicCoopTask::self()))
                 {
                     post();
                     return false;
                 }
-                CoopTask::sleep();
+                BasicCoopTask::sleep();
             }
             else
             {

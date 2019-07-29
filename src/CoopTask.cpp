@@ -35,13 +35,13 @@ extern "C" {
 
     void yield()
     {
-        if (CoopTask::running()) CoopTask::yield();
+        if (BasicCoopTask::running()) BasicCoopTask::yield();
         else __yield();
     }
 #elif !defined(ESP32) && defined(ARDUINO)
     void yield()
     {
-        if (CoopTask::running()) CoopTask::yield();
+        if (BasicCoopTask::running()) BasicCoopTask::yield();
     }
 #endif
 #if defined(ESP8266)
@@ -49,7 +49,7 @@ extern "C" {
 
     void delay(unsigned long ms)
     {
-        if (CoopTask::running()) CoopTask::delay(ms);
+        if (BasicCoopTask::running()) BasicCoopTask::delay(ms);
         else __delay(ms);
     }
 /*
@@ -58,14 +58,14 @@ extern "C" {
 
     void delay(uint32_t ms)
     {
-        if (CoopTask::running()) CoopTask::delay(ms);
+        if (BasicCoopTask::running()) BasicCoopTask<>::delay(ms);
         else __delay(ms);
     }
 */
 #endif
 }
 
-CoopTask* CoopTask::current = nullptr;
+BasicCoopTask* BasicCoopTask::current = nullptr;
 
 #ifndef ARDUINO
 namespace
@@ -88,7 +88,7 @@ namespace
 
 #ifndef _MSC_VER
 
-CoopTask::operator bool()
+BasicCoopTask::operator bool()
 {
     if (!cont) return false;
     if (taskStackTop) return true;
@@ -103,7 +103,7 @@ CoopTask::operator bool()
     return taskStackTop;
 }
 
-bool CoopTask::initialize()
+bool BasicCoopTask::initialize()
 {
     if (!cont || init) return false;
     init = true;
@@ -123,13 +123,14 @@ bool CoopTask::initialize()
 #error Setting stack pointer is not implemented on this target
 #endif
         //Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
-        CoopTask::exit(func());
+        func();
+        self()._exit();
     }
     cont = false;
     return false;
 }
 
-uint32_t CoopTask::run()
+uint32_t BasicCoopTask::run()
 {
     if (!cont) return 0;
     if (sleeps.load()) return 1;
@@ -192,19 +193,20 @@ uint32_t CoopTask::run()
 
 #else // _MSC_VER
 
-LPVOID CoopTask::primaryFiber = nullptr;
+LPVOID BasicCoopTask::primaryFiber = nullptr;
 
-CoopTask::operator bool()
+BasicCoopTask::operator bool()
 {
     return cont;
 }
 
-void __stdcall CoopTask::taskFiberFunc(void*)
+void __stdcall BasicCoopTask::taskFiberFunc(void*)
 {
-    CoopTask::exit(current->func());
+    self().func();
+    self()._exit();
 }
 
-bool CoopTask::initialize()
+bool BasicCoopTask::initialize()
 {
     if (!cont || init) return false;
     init = true;
@@ -221,7 +223,7 @@ bool CoopTask::initialize()
     return false;
 }
 
-uint32_t CoopTask::run()
+uint32_t BasicCoopTask::run()
 {
     if (!cont) return 0;
     if (sleeps.load()) return 1;
@@ -266,7 +268,7 @@ uint32_t CoopTask::run()
 
 #endif // _MSC_VER
 
-uint32_t CoopTask::getFreeStack()
+uint32_t BasicCoopTask::getFreeStack()
 {
 #ifndef _MSC_VER
     if (!taskStackTop) return 0;
@@ -282,7 +284,7 @@ uint32_t CoopTask::getFreeStack()
 #endif // _MSC_VER
 }
 
-void CoopTask::doYield(uint32_t val)
+void BasicCoopTask::doYield(uint32_t val)
 {
 #ifndef _MSC_VER
     if (!setjmp(env_yield))
@@ -290,33 +292,32 @@ void CoopTask::doYield(uint32_t val)
         longjmp(env, val);
     }
 #else // _MSC_VER
-    current->val = val;
+    self().val = val;
     SwitchToFiber(primaryFiber);
 #endif // _MSC_VER
 }
 
-void CoopTask::_exit(int code)
+void BasicCoopTask::_exit()
 {
-    _exitCode = code;
 #ifndef _MSC_VER
     longjmp(env, 1);
 #else // _MSC_VER
-    current->val = 1;
+    self().val = 1;
     SwitchToFiber(primaryFiber);
 #endif // _MSC_VER
 }
 
-void CoopTask::_yield()
+void BasicCoopTask::_yield()
 {
     doYield(2);
 }
 
-void CoopTask::_sleep()
+void BasicCoopTask::_sleep()
 {
     doYield(3);
 }
 
-void CoopTask::_delay(uint32_t ms)
+void BasicCoopTask::_delay(uint32_t ms)
 {
     delay_ms = true;
     delay_exp = millis() + ms;
@@ -324,7 +325,7 @@ void CoopTask::_delay(uint32_t ms)
     doYield(4);
 }
 
-void CoopTask::_delayMicroseconds(uint32_t us)
+void BasicCoopTask::_delayMicroseconds(uint32_t us)
 {
     if (us < DELAYMICROS_THRESHOLD) {
         ::delayMicroseconds(us);
@@ -337,7 +338,7 @@ void CoopTask::_delayMicroseconds(uint32_t us)
 }
 
 #ifdef ESP8266
-bool rescheduleTask(CoopTask* task, uint32_t repeat_us)
+bool rescheduleTask(BasicCoopTask* task, uint32_t repeat_us)
 {
     if (task->sleeping())
         return false;
@@ -368,7 +369,7 @@ bool rescheduleTask(CoopTask* task, uint32_t repeat_us)
 }
 #endif
 
-bool IRAM_ATTR scheduleTask(CoopTask* task, bool wakeup)
+bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup)
 {
     if (wakeup) task->sleep(false);
 #ifdef ESP8266

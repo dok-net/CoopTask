@@ -80,6 +80,7 @@ namespace std
         void store(T desired, std::memory_order = std::memory_order_seq_cst) volatile noexcept { value = desired; }
         T load(std::memory_order = std::memory_order_seq_cst) const volatile noexcept { return value; }
     };
+    template< typename T >	T& move(T& t) noexcept { return t; }
 }
 #endif
 
@@ -88,7 +89,7 @@ namespace std
 #define IRAM_ATTR
 #endif
 
-class CoopTask
+class BasicCoopTask
 {
 protected:
     static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
@@ -104,18 +105,18 @@ protected:
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
     static constexpr int32_t DELAYMICROS_THRESHOLD = 50;
 
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
-    using taskfunction_t = std::function< int() noexcept >;
-#else
-    using taskfunction_t = int(*)() noexcept;
-#endif
-
 #ifdef ARDUINO
     const String taskName;
 #else
     const std::string taskName;
 #endif
-    taskfunction_t func;
+
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+    using taskfunction_t = std::function< void() noexcept >;
+#else
+    using taskfunction_t = void(*)() noexcept;
+#endif
+
     uint32_t taskStackSize;
 #ifndef _MSC_VER
     char* taskStackTop = nullptr;
@@ -132,33 +133,35 @@ protected:
     uint32_t delay_exp = 0;
     bool init = false;
     bool cont = true;
-    int _exitCode = 0;
     bool delayed = false;
     std::atomic<bool> sleeps;
 
-    static CoopTask* current;
+    static BasicCoopTask* current;
 
     bool initialize();
     void doYield(uint32_t val);
 
-    void _exit(int code = 0);
+    void _exit();
     void _yield();
     void _sleep();
     void _delay(uint32_t ms);
     void _delayMicroseconds(uint32_t us);
 
+private:
+    taskfunction_t func;
+
 public:
 #ifdef ARDUINO
-    CoopTask(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    BasicCoopTask(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #else
-    CoopTask(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    BasicCoopTask(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
-        taskName(name), func(_func), taskStackSize(stackSize), sleeps(false)
+        taskName(name), taskStackSize(stackSize), sleeps(false), func(_func)
     {
     }
-    CoopTask(const CoopTask&) = delete;
-    CoopTask& operator=(const CoopTask&) = delete;
-    ~CoopTask()
+    BasicCoopTask(const BasicCoopTask&) = delete;
+    BasicCoopTask& operator=(const BasicCoopTask&) = delete;
+    ~BasicCoopTask()
     {
 #ifndef _MSC_VER
         delete[] taskStackTop;
@@ -180,9 +183,6 @@ public:
     // @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
     uint32_t getFreeStack();
 
-    // @returns: default exit code is 0, using exit() the task can set a different value.
-    int exitCode() const { return _exitCode; }
-
     bool delayIsMs() const { return delay_ms; }
 
     void IRAM_ATTR sleep(const bool state) { sleeps.store(state); }
@@ -191,44 +191,102 @@ public:
     static bool running() { return current; }
 
     // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-    static CoopTask& self() { return *current; }
+    static BasicCoopTask& self() { return *current; }
 
     bool sleeping() const { return sleeps.load(); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
     /// using regular return is to be preferred in most cases.
-    // @param code default exit code is 0, use exit() to set a different value.
-    static void exit(int code = 0) { current->_exit(code); }
+    static void exit() { self()._exit(); }
     /// use only in running CoopTask function.
-    static void yield() { current->_yield(); }
+    static void yield() { self()._yield(); }
     /// use only in running CoopTask function.
-    static void sleep() { current->_sleep(); }
+    static void sleep() { self()._sleep(); }
     /// use only in running CoopTask function.
-    static void delay(uint32_t ms) { current->_delay(ms); }
+    static void delay(uint32_t ms) { self()._delay(ms); }
     /// use only in running CoopTask function.
-    static void delayMicroseconds(uint32_t us) { current->_delayMicroseconds(us); }
+    static void delayMicroseconds(uint32_t us) { self()._delayMicroseconds(us); }
+};
+
+template<typename Result = int> class CoopTask : public BasicCoopTask
+{
+protected:
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+    using taskfunction_t = std::function< Result() noexcept >;
+#else
+    using taskfunction_t = Result(*)() noexcept;
+#endif
+
+    Result _exitCode;
+
+    static void captureFuncReturn()
+    {
+        self()._exitCode = self().func();
+    }
+    void _exit(Result&& code = Result())
+    {
+        _exitCode = std::move(code);
+        BasicCoopTask::_exit();
+    }
+    void _exit(const Result& code)
+    {
+        _exitCode = code;
+        BasicCoopTask::_exit();
+    }
+
+private:
+    taskfunction_t func;
+
+public:
+#if defined(ARDUINO)
+    CoopTask(const String& name, CoopTask::taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+#else
+    CoopTask(const std::string& name, CoopTask::taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+#endif
+        // Wrap _func into _exit() to capture return value as exit code
+        BasicCoopTask(name, captureFuncReturn, stackSize), func(_func)
+    {
+    }
+
+    // @returns: The exit code is either the return value of of the task function, or set by using the exit() function.
+    Result exitCode() const { return _exitCode; }
+
+    // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+    static CoopTask& self() { return static_cast<CoopTask&>(BasicCoopTask::self()); }
+
+    /// use only in running CoopTask function. As stack unwinding is corrupted
+    /// by exit(), which among other issues breaks the RAII idiom,
+    /// using regular return is to be preferred in most cases.
+    // @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
+    static void exit(Result&& code = Result()) { self()._exit(std::move(code)); }
+
+    /// use only in running CoopTask function. As stack unwinding is corrupted
+    /// by exit(), which among other issues breaks the RAII idiom,
+    /// using regular return is to be preferred in most cases.
+    // @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
+    static void exit(const Result& code) { self()._exit(code); }
 };
 
 #ifdef ESP8266
-bool rescheduleTask(CoopTask* task, uint32_t repeat_us);
+bool rescheduleTask(BasicCoopTask* task, uint32_t repeat_us);
 #endif
-bool IRAM_ATTR scheduleTask(CoopTask* task, bool wakeup = false);
+bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup = false);
 
 // temporary hack until delay() hook is available on platforms
 #if defined(ESP32)
 #define yield() { \
-    if (CoopTask::running()) CoopTask::yield(); \
+    if (BasicCoopTask::running()) BasicCoopTask::yield(); \
     else ::yield(); \
 }
 #define delay(m) { \
-    if (CoopTask::running()) CoopTask::delay(m); \
+    if (BasicCoopTask::running()) BasicCoopTask::delay(m); \
     else ::delay(m); \
 }
 #endif
 #ifndef ARDUINO
-inline void yield() { CoopTask::yield(); }
-inline void delay(uint32_t ms) { CoopTask::delay(ms); }
+inline void yield() { BasicCoopTask::yield(); }
+inline void delay(uint32_t ms) { BasicCoopTask::delay(ms); }
 #endif
 
 #endif // __CoopTask_h
