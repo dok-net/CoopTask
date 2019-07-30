@@ -88,7 +88,7 @@ namespace
 
 #ifndef _MSC_VER
 
-BasicCoopTask::operator bool()
+BasicCoopTask::operator bool() noexcept
 {
     if (!cont) return false;
     if (taskStackTop) return true;
@@ -116,9 +116,6 @@ bool BasicCoopTask::initialize()
         }
 #if defined(ARDUINO) || defined(__GNUC__)
         char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + sizeof(STACKCOOKIE))));
-#elif defined(_MSC_VER) && defined (_WIN32) && !defined (_WIN64)
-        char* stackBottom = taskStackTop + taskStackSize + sizeof(STACKCOOKIE);
-        __asm mov esp, stackBottom;
 #else
 #error Setting stack pointer is not implemented on this target
 #endif
@@ -195,7 +192,7 @@ uint32_t BasicCoopTask::run()
 
 LPVOID BasicCoopTask::primaryFiber = nullptr;
 
-BasicCoopTask::operator bool()
+BasicCoopTask::operator bool() noexcept
 {
     return cont;
 }
@@ -284,7 +281,7 @@ uint32_t BasicCoopTask::getFreeStack()
 #endif // _MSC_VER
 }
 
-void BasicCoopTask::doYield(uint32_t val)
+void BasicCoopTask::doYield(uint32_t val) noexcept
 {
 #ifndef _MSC_VER
     if (!setjmp(env_yield))
@@ -297,7 +294,7 @@ void BasicCoopTask::doYield(uint32_t val)
 #endif // _MSC_VER
 }
 
-void BasicCoopTask::_exit()
+void BasicCoopTask::_exit() noexcept
 {
 #ifndef _MSC_VER
     longjmp(env, 1);
@@ -307,17 +304,17 @@ void BasicCoopTask::_exit()
 #endif // _MSC_VER
 }
 
-void BasicCoopTask::_yield()
+void BasicCoopTask::_yield() noexcept
 {
     doYield(2);
 }
 
-void BasicCoopTask::_sleep()
+void BasicCoopTask::_sleep() noexcept
 {
     doYield(3);
 }
 
-void BasicCoopTask::_delay(uint32_t ms)
+void BasicCoopTask::_delay(uint32_t ms) noexcept
 {
     delay_ms = true;
     delay_exp = millis() + ms;
@@ -325,7 +322,7 @@ void BasicCoopTask::_delay(uint32_t ms)
     doYield(4);
 }
 
-void BasicCoopTask::_delayMicroseconds(uint32_t us)
+void BasicCoopTask::_delayMicroseconds(uint32_t us) noexcept
 {
     if (us < DELAYMICROS_THRESHOLD) {
         ::delayMicroseconds(us);

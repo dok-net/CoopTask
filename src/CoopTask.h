@@ -139,13 +139,13 @@ protected:
     static BasicCoopTask* current;
 
     bool initialize();
-    void doYield(uint32_t val);
+    void doYield(uint32_t val) noexcept;
 
-    void _exit();
-    void _yield();
-    void _sleep();
-    void _delay(uint32_t ms);
-    void _delayMicroseconds(uint32_t us);
+    void _exit() noexcept;
+    void _yield() noexcept;
+    void _sleep() noexcept;
+    void _delay(uint32_t ms) noexcept;
+    void _delayMicroseconds(uint32_t us) noexcept;
 
 private:
     taskfunction_t func;
@@ -169,67 +169,77 @@ public:
     }
 
 #ifdef ARDUINO
-    const String& name() const { return taskName; }
+    const String& name() const noexcept { return taskName; }
 #else
-    const std::string& name() const { return taskName; }
+    const std::string& name() const noexcept { return taskName; }
 #endif
 
     // @returns: true if the CoopTask object is ready to run, including stack allocation.
     //           false if either initialization has failed, or the task has exited().
-    operator bool();
+    operator bool() noexcept;
     // @returns: 0: exited. 1: runnable or sleeping. >1: delayed until millis() or micros() deadline, check delayIsMs().
     uint32_t run();
 
     // @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
     uint32_t getFreeStack();
 
-    bool delayIsMs() const { return delay_ms; }
+    bool delayIsMs() const noexcept { return delay_ms; }
 
-    void IRAM_ATTR sleep(const bool state) { sleeps.store(state); }
+    void IRAM_ATTR sleep(const bool state) noexcept { sleeps.store(state); }
 
     // @returns: true if called from the task function of a CoopTask, false otherwise.
-    static bool running() { return current; }
+    static bool running() noexcept { return current; }
 
     // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-    static BasicCoopTask& self() { return *current; }
+    static BasicCoopTask& self() noexcept { return *current; }
 
-    bool sleeping() const { return sleeps.load(); }
+    bool sleeping() const noexcept { return sleeps.load(); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
-    /// using regular return is to be preferred in most cases.
-    static void exit() { self()._exit(); }
+    /// using regular return or exceptions is to be preferred in most cases.
+    static void exit() noexcept { self()._exit(); }
     /// use only in running CoopTask function.
-    static void yield() { self()._yield(); }
+    static void yield() noexcept { self()._yield(); }
     /// use only in running CoopTask function.
-    static void sleep() { self()._sleep(); }
+    static void sleep() noexcept { self()._sleep(); }
     /// use only in running CoopTask function.
-    static void delay(uint32_t ms) { self()._delay(ms); }
+    static void delay(uint32_t ms) noexcept { self()._delay(ms); }
     /// use only in running CoopTask function.
-    static void delayMicroseconds(uint32_t us) { self()._delayMicroseconds(us); }
+    static void delayMicroseconds(uint32_t us) noexcept { self()._delayMicroseconds(us); }
 };
 
 template<typename Result = int> class CoopTask : public BasicCoopTask
 {
 protected:
 #if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
-    using taskfunction_t = std::function< Result() noexcept >;
+    using taskfunction_t = std::function< Result() >;
 #else
-    using taskfunction_t = Result(*)() noexcept;
+    using taskfunction_t = Result(*)();
 #endif
 
     Result _exitCode;
 
-    static void captureFuncReturn()
+    static void captureFuncReturn() noexcept
     {
-        self()._exitCode = self().func();
+#if defined(ESP32) || !defined(ARDUINO)
+        try {
+#endif
+            self()._exitCode = self().func();
+#if defined(ESP32) || !defined(ARDUINO)
+        }
+        catch (Result code)
+        {
+            self()._exitCode = code;
+        }
+#endif
     }
-    void _exit(Result&& code = Result())
+    void _exit(Result&& code = Result()) noexcept
     {
         _exitCode = std::move(code);
         BasicCoopTask::_exit();
     }
-    void _exit(const Result& code)
+    void _exit(const Result& code) noexcept
     {
         _exitCode = code;
         BasicCoopTask::_exit();
@@ -250,22 +260,22 @@ public:
     }
 
     // @returns: The exit code is either the return value of of the task function, or set by using the exit() function.
-    Result exitCode() const { return _exitCode; }
+    Result exitCode() const noexcept { return _exitCode; }
 
     // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-    static CoopTask& self() { return static_cast<CoopTask&>(BasicCoopTask::self()); }
+    static CoopTask& self() noexcept { return static_cast<CoopTask&>(BasicCoopTask::self()); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
-    /// using regular return is to be preferred in most cases.
+    /// using regular return or exceptions is to be preferred in most cases.
     // @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
-    static void exit(Result&& code = Result()) { self()._exit(std::move(code)); }
+    static void exit(Result&& code = Result()) noexcept { self()._exit(std::move(code)); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
-    /// using regular return is to be preferred in most cases.
+    /// using regular return or exceptions is to be preferred in most cases.
     // @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
-    static void exit(const Result& code) { self()._exit(code); }
+    static void exit(const Result& code) noexcept { self()._exit(code); }
 };
 
 #ifdef ESP8266

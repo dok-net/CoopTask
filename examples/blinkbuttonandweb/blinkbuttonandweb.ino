@@ -180,6 +180,15 @@ void printReport()
     start = micros();
 };
 
+class RAIITest
+{
+public:
+    ~RAIITest()
+    {
+        Serial.print(BasicCoopTask::self().name());
+        Serial.println(" stack unwound, RAIITest object destructed");
+    }
+};
 void setup()
 {
 #ifdef ESP8266
@@ -234,8 +243,9 @@ void setup()
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
-    taskText = new CoopTask<uint32_t>(F("Text"), []() noexcept
+    taskText = new CoopTask<uint32_t>(F("Text"), []()
         {
+            RAIITest raii;
             Serial.println("Task1 - A");
             yield();
             Serial.println("Task1 - B");
@@ -244,12 +254,16 @@ void setup()
             Serial.print("!!!Task1 - C - ");
             Serial.println(millis() - start);
             printStackReport(taskText);
-            return 42L;
+#if defined(ESP32) || !defined(ARDUINO)
+            throw (uint32_t)41L;
+#endif
+            //CoopTask<uint32_t>::exit(42);
+            return (uint32_t)43L;
         }
 #if defined(ESP8266) || defined(ESP32)
-    , 0x260);
+    , 0x380);
 #else
-    , 0x60);
+    , 0x68);
 #endif
     if (!*taskText) Serial.println("CoopTask Text out of stack");
 
