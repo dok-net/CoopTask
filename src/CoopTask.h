@@ -165,6 +165,8 @@ public:
     {
 #ifndef _MSC_VER
         delete[] taskStackTop;
+#else
+        if (taskFiber) DeleteFiber(taskFiber);
 #endif
     }
 

@@ -249,6 +249,8 @@ uint32_t BasicCoopTask::run()
     delayed |= val > 3;
 
     if (!cont) {
+        DeleteFiber(taskFiber);
+        taskFiber = NULL;
         return 0;
     }
     switch (val)
