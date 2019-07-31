@@ -58,7 +58,7 @@ extern "C" {
 
     void delay(uint32_t ms)
     {
-        if (BasicCoopTask::running()) BasicCoopTask<>::delay(ms);
+        if (BasicCoopTask::running()) BasicCoopTask::delay(ms);
         else __delay(ms);
     }
 */
