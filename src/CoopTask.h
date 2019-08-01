@@ -280,12 +280,12 @@ public:
     static void exit(const Result& code) noexcept { self()._exit(code); }
 };
 
-#ifdef ESP8266
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
 bool rescheduleTask(BasicCoopTask* task, uint32_t repeat_us);
 #endif
 bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup = false);
 
-// temporary hack until delay() hook is available on platforms
+// TODO: temporary hack until delay() hook is available on ESP32
 #if defined(ESP32)
 #define yield() { \
     if (BasicCoopTask::running()) BasicCoopTask::yield(); \
@@ -296,6 +296,7 @@ bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup = false);
     else ::delay(m); \
 }
 #endif
+
 #ifndef ARDUINO
 inline void yield() { BasicCoopTask::yield(); }
 inline void delay(uint32_t ms) { BasicCoopTask::delay(ms); }

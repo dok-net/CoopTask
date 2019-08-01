@@ -24,13 +24,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <chrono>
 #endif
 
-#ifdef ESP8266
+#if defined(ESP8266)
 #include <Schedule.h>
+#elif defined(ESP32)
+// TODO: requires some PR to be merged: #include <FastScheduler.h>
 #endif
 
 extern "C" {
     // Integration into global yield() and delay()
-#if defined(ESP8266) /* || defined(ESP32) - temporarily disabled until delay() hook is available on platforms */
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
     void __yield();
 
     void yield()
@@ -52,8 +54,8 @@ extern "C" {
         if (BasicCoopTask::running()) BasicCoopTask::delay(ms);
         else __delay(ms);
     }
-/*
-#elif defined(ESP32) - temporarily disabled until delay() hook is available on platforms
+
+#elif false // TODO: requires some PR to be merged: defined(ESP32)
     void __delay(uint32_t ms);
 
     void delay(uint32_t ms)
@@ -61,7 +63,7 @@ extern "C" {
         if (BasicCoopTask::running()) BasicCoopTask::delay(ms);
         else __delay(ms);
     }
-*/
+
 #endif
 }
 
@@ -336,7 +338,7 @@ void BasicCoopTask::_delayMicroseconds(uint32_t us) noexcept
     doYield(4);
 }
 
-#ifdef ESP8266
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
 bool rescheduleTask(BasicCoopTask* task, uint32_t repeat_us)
 {
     if (task->sleeping())
@@ -371,7 +373,7 @@ bool rescheduleTask(BasicCoopTask* task, uint32_t repeat_us)
 bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup)
 {
     if (wakeup) task->sleep(false);
-#ifdef ESP8266
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
     return schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
 #else
     return true;

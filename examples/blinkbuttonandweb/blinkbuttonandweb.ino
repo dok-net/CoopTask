@@ -324,7 +324,7 @@ void setup()
         }, 0x800);
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
-#ifdef ESP8266
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
     scheduleTask(taskButton);
     scheduleTask(taskBlink);
     scheduleTask(taskText);
@@ -342,7 +342,7 @@ void setup()
     start = micros();
 }
 
-#ifndef ESP8266
+#if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)
 #if defined(ESP8266) || defined(ESP32)
 uint32_t taskButtonRunnable = 1;
 #endif
@@ -359,7 +359,7 @@ uint32_t taskWebRunnable = 1;
 
 void loop()
 {
-#ifndef ESP8266
+#if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)
 #if defined(ESP8266) || defined(ESP32)
     if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
 #endif
