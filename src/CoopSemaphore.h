@@ -212,7 +212,7 @@ public:
         return true;
     }
 
-    // @returns: true if sucessfully aquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
+    // @returns: true if sucessfully acquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
     bool wait()
     {
         int val;
@@ -272,6 +272,7 @@ public:
         }
     }
 
+    // @returns: true if the semaphore was acquired immediately, otherwise false.
     bool try_wait()
     {
 #if !defined(ESP32) && defined(ARDUINO)
