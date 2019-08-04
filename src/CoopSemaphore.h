@@ -234,14 +234,17 @@ public:
             if (posted == 0)
             {
                 BasicCoopTask::self().sleep(true);
+                // if posted == 0 but pendingTask0 != nullptr,
+                // a pending task was not actually posted, but awakened in error
 #if !defined(ESP32) && defined(ARDUINO)
                 {
                     InterruptLock lock;
-                    pendingTask0.store(&BasicCoopTask::self());
+                    if (!pendingTask0.load()) pendingTask0.store(&BasicCoopTask::self());
                 }
                 BasicCoopTask::yield();
 #else
-                pendingTask0.exchange(&BasicCoopTask::self());
+                BasicCoopTask* null = nullptr;
+                pendingTask0.compare_exchange_strong(null, &BasicCoopTask::self());
 #ifdef ESP32
                 yield();
 #else
