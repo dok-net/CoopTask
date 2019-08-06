@@ -174,7 +174,7 @@ void circular_queue<T>::for_each(std::function<void(T&)> fun)
 class CoopSemaphore
 {
 protected:
-    std::atomic<int> value;
+    std::atomic<unsigned> value;
     std::atomic<BasicCoopTask*> pendingTask0;
     std::unique_ptr<circular_queue<BasicCoopTask*>> pendingTasks;
 public:
@@ -198,80 +198,113 @@ public:
 #if !defined(ESP32) && defined(ARDUINO)
         {
             InterruptLock lock;
-            int val = value.load();
+            unsigned val = value.load();
             value.store(val + 1);
             pendingTask = pendingTask0.load();
             pendingTask0.store(nullptr);
         }
 #else
-        int val = 0;
+        unsigned val = 0;
         while (!value.compare_exchange_weak(val, val + 1)) {}
         pendingTask = pendingTask0.exchange(nullptr);
 #endif
-        if (pendingTask) scheduleTask(pendingTask, true);
+        if (pendingTask && pendingTask->sleeping()) scheduleTask(pendingTask, true);
         return true;
     }
 
     // @returns: true if sucessfully acquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
     bool wait()
     {
-        int val;
-#if !defined(ESP32) && defined(ARDUINO)
-        {
-            InterruptLock lock;
-            val = value.load();
-            value.store(val - 1);
-        }
-#else
-        val = 1;
-        while (!value.compare_exchange_weak(val, val - 1)) {}
-#endif
-        if (val > 0) return true;
-        --val;
         for (;;)
         {
-            int posted = 1 + pendingTasks->available() + val;
-            if (posted == 0)
-            {
-                BasicCoopTask::self().sleep(true);
-                // if posted == 0 but pendingTask0 != nullptr,
-                // a pending task was not actually posted, but awakened in error
+            auto& self = BasicCoopTask::self();
+            unsigned val;
 #if !defined(ESP32) && defined(ARDUINO)
+            {
+                InterruptLock lock;
+                val = value.load();
+                if (!val)
                 {
-                    InterruptLock lock;
-                    if (!pendingTask0.load()) pendingTask0.store(&BasicCoopTask::self());
+                    if (!pendingTasks->push(&self))
+                    {
+                        return false;
+                    }
+                    self.sleep(true);
+                    if (!pendingTask0.load())
+                    {
+                        pendingTask0.store(pendingTasks->pop());
+                    }
                 }
-                BasicCoopTask::yield();
+                else
+                {
+                    value.store(val - 1);
+                }
+            }
 #else
+            val = 1;
+            while (val && !value.compare_exchange_weak(val, val - 1)) {}
+            if (!val)
+            {
+                if (!pendingTasks->push(&self))
+                {
+                    return false;
+                }
+                self.sleep(true);
                 BasicCoopTask* null = nullptr;
-                pendingTask0.compare_exchange_strong(null, &BasicCoopTask::self());
+                if (pendingTask0.compare_exchange_strong(null, pendingTasks->peek())) pendingTasks->pop();
+            }
+#endif
+            if (!val) {
 #ifdef ESP32
                 yield();
 #else
                 BasicCoopTask::yield();
 #endif
+                continue;
+            }
+
+            while (val)
+            {
+#if !defined(ESP32) && defined(ARDUINO)
+                {
+                    InterruptLock lock;
+                    if (pendingTasks->available() && !pendingTask0.load())
+                    {
+                        pendingTask0.store(pendingTasks->pop());
+                    }
+                }
+#else
+                BasicCoopTask* null = nullptr;
+                if (pendingTasks->available() && pendingTask0.compare_exchange_strong(null, pendingTasks->peek()))
+                {
+                    pendingTasks->pop();
+                }
 #endif
-            }
-            else if (posted < 0)
-            {
-                if (!pendingTasks->push(&BasicCoopTask::self()))
+                if (!--val) break;
+                BasicCoopTask* pendingTask;
+#if !defined(ESP32) && defined(ARDUINO)
                 {
-                    post();
-                    return false;
+                    InterruptLock lock;
+                    pendingTask = pendingTask0.load();
+                    pendingTask0.store(nullptr);
                 }
-                BasicCoopTask::sleep();
-            }
-            else
-            {
-                auto awake = min(posted, static_cast<int>(pendingTasks->available()));
-                while (awake-- > 0)
+#else
+                pendingTask = pendingTask0.exchange(nullptr);
+#endif
+                if (!pendingTask)
                 {
-                    auto task = pendingTasks->pop();
-                    scheduleTask(task, true);
+                    break;
                 }
-                return true;
+                else if (&self == pendingTask)
+                {
+                    self.sleep(false);
+                }
+                else if (pendingTask->sleeping())
+                {
+                    scheduleTask(pendingTask, true);
+                }
             }
-            val = value.load();
+            return true;
         }
     }
 
@@ -287,9 +320,9 @@ public:
         }
         return true;
 #else
-        int val = 1;
+        unsigned val = 1;
         while (val && !value.compare_exchange_weak(val, val - 1)) {}
-        return val > 0;
+        return val;
 #endif
     }
 };

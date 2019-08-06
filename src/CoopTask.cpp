@@ -54,16 +54,16 @@ extern "C" {
         if (BasicCoopTask::running()) BasicCoopTask::delay(ms);
         else __delay(ms);
     }
-
-#elif false // TODO: requires some PR to be merged: defined(ESP32)
-    void __delay(uint32_t ms);
-
-    void delay(uint32_t ms)
-    {
-        if (BasicCoopTask::running()) BasicCoopTask::delay(ms);
-        else __delay(ms);
-    }
-
+// TODO: requires some PR to be merged
+//#elif defined(ESP32)
+//    void __delay(uint32_t ms);
+//
+//    void delay(uint32_t ms)
+//    {
+//        if (BasicCoopTask::running()) BasicCoopTask::delay(ms);
+//        else __delay(ms);
+//    }
+//
 #endif
 }
 
@@ -372,6 +372,7 @@ bool rescheduleTask(BasicCoopTask* task, uint32_t repeat_us)
 
 bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup)
 {
+    if (!*task) return false;
     if (wakeup) task->sleep(false);
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
     return schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);

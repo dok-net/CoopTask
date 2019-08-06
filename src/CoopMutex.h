@@ -74,9 +74,12 @@ protected:
     bool locked;
 public:
     /// The constructor returns if the mutex was locked, or locking failed.
-    CoopMutexLock(CoopMutex& _mutex) : mutex(_mutex) {
+    explicit CoopMutexLock(CoopMutex& _mutex) : mutex(_mutex) {
         locked = mutex.lock();
     }
+    CoopMutexLock() = delete;
+    CoopMutexLock(const CoopMutexLock&) = delete;
+    CoopMutexLock& operator=(const CoopMutexLock&) = delete;
     // @returns: true if the mutex became locked, potentially after blocking, otherwise false.
     operator bool() {
         return locked;

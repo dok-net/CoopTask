@@ -102,7 +102,6 @@ protected:
 #else
     static constexpr uint32_t MAXSTACKSPACE = 0x10000;
 #endif
-    static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
     static constexpr int32_t DELAYMICROS_THRESHOLD = 50;
 
 #ifdef ARDUINO
@@ -151,6 +150,8 @@ private:
     taskfunction_t func;
 
 public:
+    static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
+
 #ifdef ARDUINO
     BasicCoopTask(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #else
@@ -213,13 +214,24 @@ public:
 
 template<typename Result = int> class CoopTask : public BasicCoopTask
 {
-protected:
+public:
 #if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     using taskfunction_t = std::function< Result() >;
 #else
     using taskfunction_t = Result(*)();
 #endif
 
+#if defined(ARDUINO)
+    CoopTask(const String& name, CoopTask::taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+#else
+    CoopTask(const std::string& name, CoopTask::taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+#endif
+        // Wrap _func into _exit() to capture return value as exit code
+        BasicCoopTask(name, captureFuncReturn, stackSize), func(_func)
+    {
+    }
+
+protected:
     Result _exitCode;
 
     static void captureFuncReturn() noexcept
@@ -251,16 +263,6 @@ private:
     taskfunction_t func;
 
 public:
-#if defined(ARDUINO)
-    CoopTask(const String& name, CoopTask::taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
-#else
-    CoopTask(const std::string& name, CoopTask::taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
-#endif
-        // Wrap _func into _exit() to capture return value as exit code
-        BasicCoopTask(name, captureFuncReturn, stackSize), func(_func)
-    {
-    }
-
     // @returns: The exit code is either the return value of of the task function, or set by using the exit() function.
     Result exitCode() const noexcept { return _exitCode; }
 
@@ -283,7 +285,22 @@ public:
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
 bool rescheduleTask(BasicCoopTask* task, uint32_t repeat_us);
 #endif
+
+/// Add the task to the scheduler, optionally waking up the task first.
+// @returns: true on success.
 bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup = false);
+
+/// A convenience function that creates a matching CoopTask for the supplied task function, with the
+/// given name and stack size, and adds it to the scheduler.
+// @returns: the pointer to the new CoopTask instance, or null if the creation or scheduling failed.
+template<typename Result = int> CoopTask<Result> * scheduleTask(
+    const String & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = BasicCoopTask::DEFAULTTASKSTACKSIZE)
+{
+    auto task = new CoopTask<Result>(name, func, stackSize);
+    if (task && scheduleTask(task)) return task;
+    delete task;
+    return nullptr;
+}
 
 // TODO: temporary hack until delay() hook is available on ESP32
 #if defined(ESP32)
