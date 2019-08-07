@@ -230,10 +230,6 @@ public:
                         return false;
                     }
                     self.sleep(true);
-                    if (!pendingTask0.load())
-                    {
-                        pendingTask0.store(pendingTasks->pop());
-                    }
                 }
                 else
                 {
@@ -250,52 +246,46 @@ public:
                     return false;
                 }
                 self.sleep(true);
-                BasicCoopTask* null = nullptr;
-                if (pendingTask0.compare_exchange_strong(null, pendingTasks->peek())) pendingTasks->pop();
             }
 #endif
-            if (!val) {
-#ifdef ESP32
-                yield();
-#else
-                BasicCoopTask::yield();
-#endif
-                continue;
-            }
-
-            while (val)
+            BasicCoopTask* pendingTask = nullptr;
+            const bool forcePop = val > 1;
+            for (;;)
             {
-#if !defined(ESP32) && defined(ARDUINO)
+                if (pendingTasks->available())
                 {
+#if !defined(ESP32) && defined(ARDUINO)
                     InterruptLock lock;
-                    if (pendingTasks->available() && !pendingTask0.load())
+                    if (!(pendingTask = pendingTask0.load()) || forcePop)
                     {
                         pendingTask0.store(pendingTasks->pop());
                     }
-                }
 #else
-                BasicCoopTask* null = nullptr;
-                if (pendingTasks->available() && pendingTask0.compare_exchange_strong(null, pendingTasks->peek()))
-                {
-                    pendingTasks->pop();
-                }
+                    bool exchd;
+                    while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_strong(pendingTask, pendingTasks->peek()))) {}
+                    if (exchd) pendingTasks->pop();
 #endif
-                if (!--val) break;
-                BasicCoopTask* pendingTask;
-#if !defined(ESP32) && defined(ARDUINO)
-                {
-                    InterruptLock lock;
-                    pendingTask = pendingTask0.load();
-                    pendingTask0.store(nullptr);
                 }
+                else if (val)
+                {
+                    val = 1;
+                }
+                if (!val) {
+#ifdef ESP32
+                    yield();
 #else
-                pendingTask = pendingTask0.exchange(nullptr);
+                    BasicCoopTask::yield();
 #endif
-                if (!pendingTask)
-                {
                     break;
                 }
-                else if (&self == pendingTask)
+                if (val == 1) return true;
+                if (!pendingTask)
+                {
+                    continue;
+                }
+                val -= 1;
+
+                if (&self == pendingTask)
                 {
                     self.sleep(false);
                 }
@@ -304,7 +294,6 @@ public:
                     scheduleTask(pendingTask, true);
                 }
             }
-            return true;
         }
     }
 
