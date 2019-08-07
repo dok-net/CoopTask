@@ -123,8 +123,8 @@ protected:
     jmp_buf env_yield;
 #else
     static LPVOID primaryFiber;
-    LPVOID taskFiber;
-    int val;
+    LPVOID taskFiber = nullptr;
+    int val = 0;
     static void __stdcall taskFiberFunc(void*);
 #endif
     // true: delay_exp is vs. millis(); false: delay_exp is vs. micros().
@@ -294,7 +294,11 @@ bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup = false);
 /// given name and stack size, and adds it to the scheduler.
 // @returns: the pointer to the new CoopTask instance, or null if the creation or scheduling failed.
 template<typename Result = int> CoopTask<Result> * scheduleTask(
+#if defined(ARDUINO)
     const String & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = BasicCoopTask::DEFAULTTASKSTACKSIZE)
+#else
+    const std::string & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = BasicCoopTask::DEFAULTTASKSTACKSIZE)
+#endif
 {
     auto task = new CoopTask<Result>(name, func, stackSize);
     if (task && scheduleTask(task)) return task;
