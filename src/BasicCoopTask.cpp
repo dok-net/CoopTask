@@ -1,5 +1,5 @@
 /*
-CoopTask.cpp - Implementation of cooperative scheduling tasks
+BasicCoopTask.cpp - Implementation of cooperative scheduling tasks
 Copyright (c) 2019 Dirk O. Kaar. All rights reserved.
 
 This library is free software; you can redistribute it and/or
@@ -17,7 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include "CoopTask.h"
+#include "BasicCoopTask.h"
 #ifdef ARDUINO
 #include <alloca.h>
 #else

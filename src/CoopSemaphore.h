@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __CoopSemaphore_h
 #define __CoopSemaphore_h
 
-#include "CoopTask.h"
+#include "BasicCoopTask.h"
 #if defined(ESP8266)
 #include "circular_queue/circular_queue.h"
 #include <interrupts.h>
