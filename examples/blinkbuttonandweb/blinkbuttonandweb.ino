@@ -148,7 +148,7 @@ CoopSemaphore reportSema(0);
 CoopTask<>* taskWeb;
 #endif
 
-void printStackReport(BasicCoopTask* task)
+void printStackReport(CoopTaskBase* task)
 {
     if (!task) return;
     Serial.print(task->name().c_str());
@@ -185,7 +185,7 @@ class RAIITest
 public:
     ~RAIITest()
     {
-        Serial.print(BasicCoopTask::self().name());
+        Serial.print(CoopTaskBase::self().name());
         Serial.println(" stack unwound, RAIITest object destructed");
     }
 };

@@ -1,5 +1,5 @@
 /*
-BasicCoopTask.h - Implementation of cooperative scheduling tasks
+CoopTaskBase.h - Implementation of cooperative scheduling tasks
 Copyright (c) 2019 Dirk O. Kaar. All rights reserved.
 
 This library is free software; you can redistribute it and/or
@@ -17,8 +17,8 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef __BasicCoopTask_h
-#define __BasicCoopTask_h
+#ifndef __CoopTaskBase_h
+#define __CoopTaskBase_h
 
 #if defined(ESP8266) || defined(ESP32)
 #include <functional>
@@ -89,7 +89,7 @@ namespace std
 #define IRAM_ATTR
 #endif
 
-class BasicCoopTask
+class CoopTaskBase
 {
 protected:
     static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
@@ -135,7 +135,7 @@ protected:
     bool delayed = false;
     std::atomic<bool> sleeps;
 
-    static BasicCoopTask* current;
+    static CoopTaskBase* current;
 
 #ifndef _MSC_VER
     bool allocateStack();
@@ -157,9 +157,9 @@ public:
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
 
 #ifdef ARDUINO
-    BasicCoopTask(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    CoopTaskBase(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #else
-    BasicCoopTask(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    CoopTaskBase(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
         taskName(name), taskStackSize(stackSize), sleeps(false), func(_func)
     {
@@ -167,9 +167,9 @@ public:
         allocateStack();
 #endif
     }
-    BasicCoopTask(const BasicCoopTask&) = delete;
-    BasicCoopTask& operator=(const BasicCoopTask&) = delete;
-    ~BasicCoopTask()
+    CoopTaskBase(const CoopTaskBase&) = delete;
+    CoopTaskBase& operator=(const CoopTaskBase&) = delete;
+    ~CoopTaskBase()
     {
 #ifndef _MSC_VER
         disposeStack();
@@ -206,7 +206,7 @@ public:
     static bool running() noexcept { return current; }
 
     // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-    static BasicCoopTask& self() noexcept { return *current; }
+    static CoopTaskBase& self() noexcept { return *current; }
 
     bool sleeping() const noexcept { return sleeps.load(); }
 
@@ -225,28 +225,28 @@ public:
 };
 
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
-bool rescheduleTask(BasicCoopTask* task, uint32_t repeat_us);
+bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us);
 #endif
 
 /// Add the task to the scheduler, optionally waking up the task first.
 // @returns: true on success.
-bool IRAM_ATTR scheduleTask(BasicCoopTask* task, bool wakeup = false);
+bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup = false);
 
 // TODO: temporary hack until delay() hook is available on ESP32
 #if defined(ESP32)
 #define yield() { \
-    if (BasicCoopTask::running()) BasicCoopTask::yield(); \
+    if (CoopTaskBase::running()) CoopTaskBase::yield(); \
     else ::yield(); \
 }
 #define delay(m) { \
-    if (BasicCoopTask::running()) BasicCoopTask::delay(m); \
+    if (CoopTaskBase::running()) CoopTaskBase::delay(m); \
     else ::delay(m); \
 }
 #endif
 
 #ifndef ARDUINO
-inline void yield() { BasicCoopTask::yield(); }
-inline void delay(uint32_t ms) { BasicCoopTask::delay(ms); }
+inline void yield() { CoopTaskBase::yield(); }
+inline void delay(uint32_t ms) { CoopTaskBase::delay(ms); }
 #endif
 
-#endif // __BasicCoopTask_h
+#endif // __CoopTaskBase_h

@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 class CoopMutex : private CoopSemaphore
 {
 protected:
-    BasicCoopTask* owner = nullptr;
+    CoopTaskBase* owner = nullptr;
 
 public:
     CoopMutex(unsigned maxPending = 10) : CoopSemaphore(1, maxPending) {}
@@ -36,7 +36,7 @@ public:
     // @returns: true, or false, if the current task does not own the mutex.
     bool unlock()
     {
-        if (BasicCoopTask::running() && &BasicCoopTask::self() == owner && post())
+        if (CoopTaskBase::running() && &CoopTaskBase::self() == owner && post())
         {
             owner = nullptr;
             return true;
@@ -47,9 +47,9 @@ public:
     // @returns: true if the mutex becomes locked. false if it is already locked by the same task, or the maximum number of pending tasks is exceeded.
     bool lock()
     {
-        if (BasicCoopTask::running() && &BasicCoopTask::self() != owner && wait())
+        if (CoopTaskBase::running() && &CoopTaskBase::self() != owner && wait())
         {
-            owner = &BasicCoopTask::self();
+            owner = &CoopTaskBase::self();
             return true;
         }
         return false;
@@ -58,9 +58,9 @@ public:
     // @returns: true if the mutex becomes freshly locked without waiting, otherwise false.
     bool try_lock()
     {
-        if (BasicCoopTask::running() && &BasicCoopTask::self() != owner && try_wait())
+        if (CoopTaskBase::running() && &CoopTaskBase::self() != owner && try_wait())
         {
-            owner = &BasicCoopTask::self();
+            owner = &CoopTaskBase::self();
             return true;
         }
         return false;

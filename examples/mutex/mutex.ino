@@ -9,38 +9,38 @@
 #include <CoopMutex.h>
 
 CoopMutex mutex;
-BasicCoopTask* hasMutex(nullptr);
+CoopTaskBase* hasMutex(nullptr);
 
 void haveMutex()
 {
     if (hasMutex)
     {
-        Serial.print(BasicCoopTask::self().name());
+        Serial.print(CoopTaskBase::self().name());
         Serial.print(" called haveMutex, despite ");
         Serial.print(hasMutex->name());
         Serial.println(" is known to have mutex.");
         return;
     }
-    hasMutex = &BasicCoopTask::self();
+    hasMutex = &CoopTaskBase::self();
 }
 
 void yieldMutex()
 {
-    if (hasMutex != &BasicCoopTask::self())
+    if (hasMutex != &CoopTaskBase::self())
     {
-        Serial.print(BasicCoopTask::self().name());
+        Serial.print(CoopTaskBase::self().name());
         Serial.println(" called yieldMutex, but no task currently has the mutex.");
         return;
     }
     hasMutex = nullptr;
 }
 
-BasicCoopTask* firstTask;
-BasicCoopTask* secondTask;
-BasicCoopTask* thirdTask;
+CoopTaskBase* firstTask;
+CoopTaskBase* secondTask;
+CoopTaskBase* thirdTask;
 
 #ifndef ESP8266
-BasicCoopTask** tasks[] = { &firstTask, &secondTask, &thirdTask };
+CoopTaskBase** tasks[] = { &firstTask, &secondTask, &thirdTask };
 #endif
 
 void setup() {
@@ -49,7 +49,7 @@ void setup() {
 
     firstTask = scheduleTask("first", []()
         {
-            Serial.print(BasicCoopTask::self().name());
+            Serial.print(CoopTaskBase::self().name());
             Serial.println(" starts");
             for (int i = 0; i < 30; ++i)
             {
@@ -57,15 +57,15 @@ void setup() {
                     CoopMutexLock lock(mutex);
                     if (!lock) {
                         Serial.print("failed to lock mutex in ");
-                        Serial.println(BasicCoopTask::self().name());
+                        Serial.println(CoopTaskBase::self().name());
                     }
                     haveMutex();
-                    Serial.print(BasicCoopTask::self().name());
+                    Serial.print(CoopTaskBase::self().name());
                     Serial.println(" has mutex");
                     yield();
                     yieldMutex();
                 }
-                Serial.print(BasicCoopTask::self().name());
+                Serial.print(CoopTaskBase::self().name());
                 Serial.println(" runs");
                 yield();
             }
@@ -79,7 +79,7 @@ void setup() {
     if (!firstTask) Serial.println("firstTask not scheduled");
     secondTask = scheduleTask("second", []()
         {
-            Serial.print(BasicCoopTask::self().name());
+            Serial.print(CoopTaskBase::self().name());
             Serial.println(" starts");
             for (int i = 0; i < 30; ++i)
             {
@@ -87,15 +87,15 @@ void setup() {
                     CoopMutexLock lock(mutex);
                     if (!lock) {
                         Serial.print("failed to lock mutex in ");
-                        Serial.println(BasicCoopTask::self().name());
+                        Serial.println(CoopTaskBase::self().name());
                     }
                     haveMutex();
-                    Serial.print(BasicCoopTask::self().name());
+                    Serial.print(CoopTaskBase::self().name());
                     Serial.println(" has mutex");
                     yield();
                     yieldMutex();
                 }
-                Serial.print(BasicCoopTask::self().name());
+                Serial.print(CoopTaskBase::self().name());
                 Serial.println(" runs");
                 yield();
             }
@@ -109,7 +109,7 @@ void setup() {
     if (!secondTask) Serial.println("secondTask not scheduled");
     thirdTask = scheduleTask("third", []()
         {
-            Serial.print(BasicCoopTask::self().name());
+            Serial.print(CoopTaskBase::self().name());
             Serial.println(" starts");
             for (int i = 0; i < 10; ++i)
             {
@@ -117,21 +117,21 @@ void setup() {
                     CoopMutexLock lock(mutex);
                     if (!lock) {
                         Serial.print("failed to lock mutex in ");
-                        Serial.println(BasicCoopTask::self().name());
+                        Serial.println(CoopTaskBase::self().name());
                     }
                     haveMutex();
-                    Serial.print(BasicCoopTask::self().name());
+                    Serial.print(CoopTaskBase::self().name());
                     Serial.println(" has mutex");
                     yield();
                     yieldMutex();
                 }
-                Serial.print(BasicCoopTask::self().name());
+                Serial.print(CoopTaskBase::self().name());
                 Serial.println(" runs");
                 yield();
             }
             for (int i = 0; i < 10; ++i)
             {
-                Serial.print(BasicCoopTask::self().name());
+                Serial.print(CoopTaskBase::self().name());
                 Serial.println(" still runs");
                 yield();
             }

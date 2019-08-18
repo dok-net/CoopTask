@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __CoopSemaphore_h
 #define __CoopSemaphore_h
 
-#include "BasicCoopTask.h"
+#include "CoopTaskBase.h"
 #if defined(ESP8266)
 #include "circular_queue/circular_queue.h"
 #include <interrupts.h>
@@ -175,18 +175,18 @@ class CoopSemaphore
 {
 protected:
     std::atomic<unsigned> value;
-    std::atomic<BasicCoopTask*> pendingTask0;
-    std::unique_ptr<circular_queue<BasicCoopTask*>> pendingTasks;
+    std::atomic<CoopTaskBase*> pendingTask0;
+    std::unique_ptr<circular_queue<CoopTaskBase*>> pendingTasks;
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
-    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<BasicCoopTask*>(maxPending)) {}
+    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<CoopTaskBase*>(maxPending)) {}
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-        pendingTasks->for_each([](BasicCoopTask*&& task) { task->sleep(false); });
+        pendingTasks->for_each([](CoopTaskBase*&& task) { task->sleep(false); });
         pendingTasks.reset();
     }
 
@@ -194,7 +194,7 @@ public:
     /// or a concurrent OS thread that is synchronized with the singled thread running CoopTasks.
     bool IRAM_ATTR post()
     {
-        BasicCoopTask* pendingTask;
+        CoopTaskBase* pendingTask;
 #if !defined(ESP32) && defined(ARDUINO)
         {
             InterruptLock lock;
@@ -217,7 +217,7 @@ public:
     {
         for (;;)
         {
-            auto& self = BasicCoopTask::self();
+            auto& self = CoopTaskBase::self();
             unsigned val;
 #if !defined(ESP32) && defined(ARDUINO)
             {
@@ -248,7 +248,7 @@ public:
                 self.sleep(true);
             }
 #endif
-            BasicCoopTask* pendingTask = nullptr;
+            CoopTaskBase* pendingTask = nullptr;
             const bool forcePop = val > 1;
             for (;;)
             {
@@ -274,7 +274,7 @@ public:
 #ifdef ESP32
                     yield();
 #else
-                    BasicCoopTask::yield();
+                    CoopTaskBase::yield();
 #endif
                     break;
                 }
