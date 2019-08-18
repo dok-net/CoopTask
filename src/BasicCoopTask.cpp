@@ -90,9 +90,9 @@ namespace
 
 #ifndef _MSC_VER
 
-BasicCoopTask::operator bool() noexcept
+bool BasicCoopTask::allocateStack()
 {
-    if (!cont) return false;
+    if (!cont || init) return false;
     if (taskStackTop) return true;
     if (taskStackSize <= MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE))
     {
@@ -109,22 +109,19 @@ bool BasicCoopTask::initialize()
 {
     if (!cont || init) return false;
     init = true;
-    if (*this)
+    // fill stack with magic values to check overflow, corruption, and high water mark
+    for (uint32_t pos = 0; pos <= (taskStackSize + sizeof(STACKCOOKIE)) / sizeof(uint32_t); ++pos)
     {
-        // fill stack with magic values to check overflow, corruption, and high water mark
-        for (uint32_t pos = 0; pos <= (taskStackSize + sizeof(STACKCOOKIE)) / sizeof(uint32_t); ++pos)
-        {
-            reinterpret_cast<uint32_t*>(taskStackTop)[pos] = STACKCOOKIE;
-        }
+        reinterpret_cast<uint32_t*>(taskStackTop)[pos] = STACKCOOKIE;
+    }
 #if defined(ARDUINO) || defined(__GNUC__)
-        char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + sizeof(STACKCOOKIE))));
+    char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + sizeof(STACKCOOKIE))));
 #else
 #error Setting stack pointer is not implemented on this target
 #endif
-        //Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
-        func();
-        self()._exit();
-    }
+    //Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
+    func();
+    self()._exit();
     cont = false;
     return false;
 }
@@ -193,11 +190,6 @@ uint32_t BasicCoopTask::run()
 #else // _MSC_VER
 
 LPVOID BasicCoopTask::primaryFiber = nullptr;
-
-BasicCoopTask::operator bool() noexcept
-{
-    return cont;
-}
 
 void __stdcall BasicCoopTask::taskFiberFunc(void*)
 {

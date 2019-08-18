@@ -137,6 +137,10 @@ protected:
 
     static BasicCoopTask* current;
 
+#ifndef _MSC_VER
+    bool allocateStack();
+    void disposeStack() { delete[] taskStackTop; }
+#endif
     bool initialize();
     void doYield(uint32_t val) noexcept;
 
@@ -159,13 +163,16 @@ public:
 #endif
         taskName(name), taskStackSize(stackSize), sleeps(false), func(_func)
     {
+#ifndef _MSC_VER
+        allocateStack();
+#endif
     }
     BasicCoopTask(const BasicCoopTask&) = delete;
     BasicCoopTask& operator=(const BasicCoopTask&) = delete;
     ~BasicCoopTask()
     {
 #ifndef _MSC_VER
-        delete[] taskStackTop;
+        disposeStack();
 #else
         if (taskFiber) DeleteFiber(taskFiber);
 #endif
@@ -179,7 +186,12 @@ public:
 
     // @returns: true if the CoopTask object is ready to run, including stack allocation.
     //           false if either initialization has failed, or the task has exited().
-    operator bool() noexcept;
+#ifndef _MSC_VER
+    operator bool() noexcept { return cont && taskStackTop; }
+#else
+    operator bool() noexcept { return cont; }
+#endif
+
     // @returns: 0: exited. 1: runnable or sleeping. >1: delayed until millis() or micros() deadline, check delayIsMs().
     uint32_t run();
 
