@@ -20,9 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __CoopTask_h
 #define __CoopTask_h
 
-#include "CoopTaskBase.h"
+#include "BasicCoopTask.h"
 
-template<typename Result = int> class CoopTask : public CoopTaskBase
+template<typename Result = int> class CoopTask : public BasicCoopTask
 {
 public:
 #if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
@@ -37,7 +37,7 @@ public:
     CoopTask(const std::string& name, CoopTask::taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
         // Wrap _func into _exit() to capture return value as exit code
-        CoopTaskBase(name, captureFuncReturn, stackSize), func(_func)
+        BasicCoopTask(name, captureFuncReturn, stackSize), func(_func)
     {
     }
 
@@ -61,12 +61,12 @@ protected:
     void _exit(Result&& code = Result()) noexcept
     {
         _exitCode = std::move(code);
-        CoopTaskBase::_exit();
+        BasicCoopTask::_exit();
     }
     void _exit(const Result& code) noexcept
     {
         _exitCode = code;
-        CoopTaskBase::_exit();
+        BasicCoopTask::_exit();
     }
 
 private:
@@ -77,7 +77,7 @@ public:
     Result exitCode() const noexcept { return _exitCode; }
 
     // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-    static CoopTask& self() noexcept { return static_cast<CoopTask&>(CoopTaskBase::self()); }
+    static CoopTask& self() noexcept { return static_cast<CoopTask&>(BasicCoopTask::self()); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
@@ -97,9 +97,9 @@ public:
 // @returns: the pointer to the new CoopTask instance, or null if the creation or scheduling failed.
 template<typename Result = int> CoopTask<Result> * scheduleTask(
 #if defined(ARDUINO)
-    const String & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
+    const String & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = BasicCoopTask::DEFAULTTASKSTACKSIZE)
 #else
-    const std::string & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
+const std::string & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = BasicCoopTask::DEFAULTTASKSTACKSIZE)
 #endif
 {
     auto task = new CoopTask<Result>(name, func, stackSize);

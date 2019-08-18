@@ -92,6 +92,29 @@ namespace std
 class CoopTaskBase
 {
 protected:
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+    using taskfunction_t = std::function< void() noexcept >;
+#else
+    using taskfunction_t = void(*)() noexcept;
+#endif
+
+#ifdef ARDUINO
+    CoopTaskBase(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+#else
+    CoopTaskBase(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+#endif
+        taskName(name), taskStackSize(stackSize), sleeps(false), func(_func)
+    {
+    }
+    CoopTaskBase(const CoopTaskBase&) = delete;
+    CoopTaskBase& operator=(const CoopTaskBase&) = delete;
+    ~CoopTaskBase()
+    {
+#ifdef _MSC_VER
+        if (taskFiber) DeleteFiber(taskFiber);
+#endif
+    }
+
     static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
 #if defined(ESP32)
     static constexpr uint32_t MAXSTACKSPACE = 0x2000;
@@ -108,12 +131,6 @@ protected:
     const String taskName;
 #else
     const std::string taskName;
-#endif
-
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
-    using taskfunction_t = std::function< void() noexcept >;
-#else
-    using taskfunction_t = void(*)() noexcept;
 #endif
 
     uint32_t taskStackSize;
@@ -137,10 +154,6 @@ protected:
 
     static CoopTaskBase* current;
 
-#ifndef _MSC_VER
-    bool allocateStack();
-    void disposeStack() { delete[] taskStackTop; }
-#endif
     bool initialize();
     void doYield(uint32_t val) noexcept;
 
@@ -155,28 +168,6 @@ private:
 
 public:
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
-
-#ifdef ARDUINO
-    CoopTaskBase(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
-#else
-    CoopTaskBase(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
-#endif
-        taskName(name), taskStackSize(stackSize), sleeps(false), func(_func)
-    {
-#ifndef _MSC_VER
-        allocateStack();
-#endif
-    }
-    CoopTaskBase(const CoopTaskBase&) = delete;
-    CoopTaskBase& operator=(const CoopTaskBase&) = delete;
-    ~CoopTaskBase()
-    {
-#ifndef _MSC_VER
-        disposeStack();
-#else
-        if (taskFiber) DeleteFiber(taskFiber);
-#endif
-    }
 
 #ifdef ARDUINO
     const String& name() const noexcept { return taskName; }

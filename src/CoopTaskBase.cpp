@@ -18,9 +18,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "CoopTaskBase.h"
-#ifdef ARDUINO
-#include <alloca.h>
-#else
+#ifndef ARDUINO
 #include <chrono>
 #endif
 
@@ -89,21 +87,6 @@ namespace
 #endif
 
 #ifndef _MSC_VER
-
-bool CoopTaskBase::allocateStack()
-{
-    if (!cont || init) return false;
-    if (taskStackTop) return true;
-    if (taskStackSize <= MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE))
-    {
-#if defined(ESP8266) || defined(ESP32)
-        taskStackTop = new (std::nothrow) char[taskStackSize + 2 * sizeof(STACKCOOKIE)];
-#else
-        taskStackTop = new char[taskStackSize + 2 * sizeof(STACKCOOKIE)];
-#endif
-    }
-    return taskStackTop;
-}
 
 bool CoopTaskBase::initialize()
 {
