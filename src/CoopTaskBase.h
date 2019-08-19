@@ -115,16 +115,6 @@ protected:
 #endif
     }
 
-    static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
-#if defined(ESP32)
-    static constexpr uint32_t MAXSTACKSPACE = 0x2000;
-#elif defined(ESP8266)
-    static constexpr uint32_t MAXSTACKSPACE = 0x1000;
-#elif defined(ARDUINO)
-    static constexpr uint32_t MAXSTACKSPACE = 0x180;
-#else
-    static constexpr uint32_t MAXSTACKSPACE = 0x10000;
-#endif
     static constexpr int32_t DELAYMICROS_THRESHOLD = 50;
 
 #ifdef ARDUINO
@@ -167,6 +157,16 @@ private:
     taskfunction_t func;
 
 public:
+#if defined(ESP32)
+    static constexpr uint32_t MAXSTACKSPACE = 0x2000;
+#elif defined(ESP8266)
+    static constexpr uint32_t MAXSTACKSPACE = 0x1000;
+#elif defined(ARDUINO)
+    static constexpr uint32_t MAXSTACKSPACE = 0x180;
+#else
+    static constexpr uint32_t MAXSTACKSPACE = 0x10000;
+#endif
+    static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
     static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
 
 #ifdef ARDUINO

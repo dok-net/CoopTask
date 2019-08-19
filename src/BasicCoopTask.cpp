@@ -18,25 +18,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "BasicCoopTask.h"
-#ifdef ARDUINO
-#include <alloca.h>
-#endif
 
 #ifndef _MSC_VER
 
-bool BasicCoopTask::allocateStack()
+char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
 {
-    if (!cont || init) return false;
-    if (taskStackTop) return true;
-    if (taskStackSize <= MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE))
+    char* stackTop = nullptr;
+    if (stackSize <= CoopTaskBase::MAXSTACKSPACE - 2 * sizeof(CoopTaskBase::STACKCOOKIE))
     {
 #if defined(ESP8266) || defined(ESP32)
-        taskStackTop = new (std::nothrow) char[taskStackSize + 2 * sizeof(STACKCOOKIE)];
+        stackTop = new (std::nothrow) char[stackSize + 2 * sizeof(CoopTaskBase::STACKCOOKIE)];
 #else
-        taskStackTop = new char[taskStackSize + 2 * sizeof(STACKCOOKIE)];
+        stackTop = new char[stackSize + 2 * sizeof(CoopTaskBase::STACKCOOKIE)];
 #endif
     }
-    return taskStackTop;
+    return stackTop;
 }
 
 #endif // _MSC_VER

@@ -22,14 +22,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "CoopTaskBase.h"
 
-class BasicCoopTask : public CoopTaskBase
+class CoopTaskStackAllocator
+{
+public:
+#ifndef _MSC_VER
+    static char* allocateStack(uint32_t stackSize);
+    static void disposeStack(char* stackTop) { delete[] stackTop; }
+#endif
+};
+
+template<class StackAllocator = CoopTaskStackAllocator> class BasicCoopTask : public CoopTaskBase
 {
 protected:
-#ifndef _MSC_VER
-    bool allocateStack();
-    void disposeStack() { delete[] taskStackTop; }
-#endif
-
+    StackAllocator stackAllocator;
 public:
 #ifdef ARDUINO
     BasicCoopTask(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
@@ -39,7 +44,7 @@ public:
         CoopTaskBase(name, _func, stackSize)
     {
 #ifndef _MSC_VER
-        allocateStack();
+        taskStackTop = stackAllocator.allocateStack(stackSize);
 #endif
     }
     BasicCoopTask(const BasicCoopTask&) = delete;
@@ -47,7 +52,7 @@ public:
     ~BasicCoopTask()
     {
 #ifndef _MSC_VER
-        disposeStack();
+        stackAllocator.disposeStack(taskStackTop);
 #endif
     }
 };
