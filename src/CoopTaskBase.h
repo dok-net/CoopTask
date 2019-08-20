@@ -175,28 +175,32 @@ public:
     const std::string& name() const noexcept { return taskName; }
 #endif
 
-    // @returns: true if the CoopTask object is ready to run, including stack allocation.
-    //           false if either initialization has failed, or the task has exited().
+    /// @returns: true if the CoopTask object is ready to run, including stack allocation.
+    ///           false if either initialization has failed, or the task has exited().
 #ifndef _MSC_VER
     operator bool() noexcept { return cont && taskStackTop; }
 #else
     operator bool() noexcept { return cont; }
 #endif
 
-    // @returns: 0: exited. 1: runnable or sleeping. >1: delayed until millis() or micros() deadline, check delayIsMs().
+    /// @returns: 0: exited. 1: runnable or sleeping. >1: delayed until millis() or micros() deadline, check delayIsMs().
     uint32_t run();
 
-    // @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
+    /// @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
     uint32_t getFreeStack();
 
     bool delayIsMs() const noexcept { return delay_ms; }
 
+    /// Modifies the sleep flag. if called from a running task, it is not immediately suspended.
+    /// @param state true: a suspended task becomes sleeping, if call from the running task,
+    /// the next call to yield() or delay() puts it into sleeping state.
+    /// false: clears the sleeping state of the task.
     void IRAM_ATTR sleep(const bool state) noexcept { sleeps.store(state); }
 
-    // @returns: true if called from the task function of a CoopTask, false otherwise.
+    /// @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() noexcept { return current; }
 
-    // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+    /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
     static CoopTaskBase& self() noexcept { return *current; }
 
     bool sleeping() const noexcept { return sleeps.load(); }
@@ -220,7 +224,7 @@ bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us);
 #endif
 
 /// Add the task to the scheduler, optionally waking up the task first.
-// @returns: true on success.
+/// @returns: true on success.
 bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup = false);
 
 // TODO: temporary hack until delay() hook is available on ESP32

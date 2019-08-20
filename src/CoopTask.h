@@ -73,28 +73,28 @@ private:
     taskfunction_t func;
 
 public:
-    // @returns: The exit code is either the return value of of the task function, or set by using the exit() function.
+    /// @returns: The exit code is either the return value of of the task function, or set by using the exit() function.
     Result exitCode() const noexcept { return _exitCode; }
 
-    // @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+    /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
     static CoopTask& self() noexcept { return static_cast<CoopTask&>(BasicCoopTask<StackAllocator>::self()); }
 
-    /// use only in running CoopTask function. As stack unwinding is corrupted
+    /// Use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
     /// using regular return or exceptions is to be preferred in most cases.
-    // @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
+    /// @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
     static void exit(Result&& code = Result()) noexcept { self()._exit(std::move(code)); }
 
-    /// use only in running CoopTask function. As stack unwinding is corrupted
+    /// Use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
     /// using regular return or exceptions is to be preferred in most cases.
-    // @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
+    /// @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
     static void exit(const Result& code) noexcept { self()._exit(code); }
 };
 
 /// A convenience function that creates a matching CoopTask for the supplied task function, with the
 /// given name and stack size, and adds it to the scheduler.
-// @returns: the pointer to the new CoopTask instance, or null if the creation or scheduling failed.
+/// @returns: the pointer to the new CoopTask instance, or null if the creation or scheduling failed.
 template<typename Result = int> CoopTask<Result> * scheduleTask(
 #if defined(ARDUINO)
     const String & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)

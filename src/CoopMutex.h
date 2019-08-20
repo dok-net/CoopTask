@@ -33,7 +33,7 @@ public:
     CoopMutex(const CoopMutex&) = delete;
     CoopMutex& operator=(const CoopMutex&) = delete;
 
-    // @returns: true, or false, if the current task does not own the mutex.
+    /// @returns: true, or false, if the current task does not own the mutex.
     bool unlock()
     {
         if (CoopTaskBase::running() && &CoopTaskBase::self() == owner && post())
@@ -44,7 +44,7 @@ public:
         return false;
     }
 
-    // @returns: true if the mutex becomes locked. false if it is already locked by the same task, or the maximum number of pending tasks is exceeded.
+    /// @returns: true if the mutex becomes locked. false if it is already locked by the same task, or the maximum number of pending tasks is exceeded.
     bool lock()
     {
         if (CoopTaskBase::running() && &CoopTaskBase::self() != owner && wait())
@@ -55,7 +55,7 @@ public:
         return false;
     }
 
-    // @returns: true if the mutex becomes freshly locked without waiting, otherwise false.
+    /// @returns: true if the mutex becomes freshly locked without waiting, otherwise false.
     bool try_lock()
     {
         if (CoopTaskBase::running() && &CoopTaskBase::self() != owner && try_wait())
@@ -80,7 +80,7 @@ public:
     CoopMutexLock() = delete;
     CoopMutexLock(const CoopMutexLock&) = delete;
     CoopMutexLock& operator=(const CoopMutexLock&) = delete;
-    // @returns: true if the mutex became locked, potentially after blocking, otherwise false.
+    /// @returns: true if the mutex became locked, potentially after blocking, otherwise false.
     operator bool() {
         return locked;
     }
