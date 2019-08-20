@@ -261,7 +261,7 @@ public:
                         pendingTask0.store(pendingTasks->pop());
                     }
 #else
-                    bool exchd;
+                    bool exchd = false;
                     while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_strong(pendingTask, pendingTasks->peek()))) {}
                     if (exchd) pendingTasks->pop();
 #endif
@@ -270,15 +270,7 @@ public:
                 {
                     val = 1;
                 }
-                if (!val) {
-#ifdef ESP32
-                    yield();
-#else
-                    CoopTaskBase::yield();
-#endif
-                    break;
-                }
-                if (val == 1) return true;
+                if (val <= 1) break;
                 if (!pendingTask)
                 {
                     continue;
@@ -294,6 +286,12 @@ public:
                     scheduleTask(pendingTask, true);
                 }
             }
+            if (val == 1) return true;
+#ifdef ESP32
+            yield();
+#else
+            CoopTaskBase::yield();
+#endif
         }
     }
 
