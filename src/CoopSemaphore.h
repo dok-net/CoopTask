@@ -297,9 +297,16 @@ public:
                     if (exchd) pendingTasks->pop();
 #endif
                 }
-                else if (val)
+                else
                 {
-                    val = 1;
+#if !defined(ESP32) && defined(ARDUINO)
+                    InterruptLock lock;
+                    pendingTask = pendingTask0.load();
+                    pendingTask0.store(nullptr);
+#else
+                    while (!pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
+#endif
+                    if (val) val = 1;
                 }
                 if (val <= 1) break;
                 if (!pendingTask)
