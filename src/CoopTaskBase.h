@@ -80,7 +80,7 @@ namespace std
         void store(T desired, std::memory_order = std::memory_order_seq_cst) volatile noexcept { value = desired; }
         T load(std::memory_order = std::memory_order_seq_cst) const volatile noexcept { return value; }
     };
-    template< typename T >	T& move(T& t) noexcept { return t; }
+    template< typename T >	T&& move(T& t) noexcept { return static_cast<T&&>(t); }
 }
 #endif
 
