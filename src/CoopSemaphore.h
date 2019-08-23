@@ -254,15 +254,7 @@ public:
             {
                 InterruptLock lock;
                 val = value.load();
-                if (!val)
-                {
-                    if (!pendingTasks->push(&self))
-                    {
-                        return false;
-                    }
-                    self.sleep(true);
-                }
-                else
+                if (val)
                 {
                     value.store(val - 1);
                 }
@@ -270,6 +262,7 @@ public:
 #else
             val = 1;
             while (val && !value.compare_exchange_weak(val, val - 1)) {}
+#endif
             if (!val)
             {
                 if (!pendingTasks->push(&self))
@@ -278,7 +271,6 @@ public:
                 }
                 self.sleep(true);
             }
-#endif
             CoopTaskBase* pendingTask = nullptr;
             const bool forcePop = val > 1;
             for (;;)
@@ -324,7 +316,7 @@ public:
                     scheduleTask(pendingTask, true);
                 }
             }
-            if (val == 1) return true;
+            if (val) return true;
 #ifdef ESP32
             yield();
 #else
@@ -336,19 +328,21 @@ public:
     /// @returns: true if the semaphore was acquired immediately, otherwise false.
     bool try_wait()
     {
+        unsigned val;
 #if !defined(ESP32) && defined(ARDUINO)
         {
             InterruptLock lock;
-            auto val = value.load();
-            if (!val) return false;
-            value.store(val - 1);
+            val = value.load();
+            if (val)
+            {
+                value.store(val - 1);
+            }
         }
-        return true;
 #else
-        unsigned val = 1;
+        val = 1;
         while (val && !value.compare_exchange_weak(val, val - 1)) {}
-        return val;
 #endif
+        return val;
     }
 };
 
