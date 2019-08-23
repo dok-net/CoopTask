@@ -35,8 +35,10 @@ WebServer server(80);
 
 #if defined(ESP8266) || defined(ESP32)
 class Button {
+protected:
+    CoopSemaphore& reportSema;
 public:
-    Button(uint8_t reqPin) : pushSema(0), PIN(reqPin) {
+    Button(uint8_t reqPin, CoopSemaphore& _reportSema) : reportSema(_reportSema), pushSema(0), PIN(reqPin) {
         pinMode(PIN, INPUT_PULLUP);
         attachInterruptArg(PIN, Button::buttonIsr_static, this, FALLING);
     };
@@ -50,6 +52,7 @@ public:
         numberKeyPresses += 1;
         pressed = true;
         pushSema.post();
+        reportSema.post();
     }
 
     static void IRAM_ATTR buttonIsr_static(void* const self) {
@@ -164,8 +167,15 @@ void printReport()
 {
     //CoopTask<>::delayMicroseconds(4000000);
     Serial.print("Loop latency: ");
-    Serial.print((micros() - start) / reportCnt);
-    Serial.println("us");
+    if (reportCnt)
+    {
+        Serial.print((micros() - start) / reportCnt);
+        Serial.println("us");
+    }
+    else
+    {
+        Serial.println("N/A");
+    }
 #if defined(ESP8266) || defined(ESP32)
     printStackReport(taskButton);
 #endif
@@ -230,7 +240,7 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
 
 #if defined(ESP8266) || defined(ESP32)
-    button1 = new Button(BUTTON1);
+    button1 = new Button(BUTTON1, reportSema);
 
     taskButton = new CoopTask<>(F("Button"), loopButton, 0x700);
     if (!*taskButton) Serial.printf("CoopTask %s out of stack\n", taskButton->name().c_str());
