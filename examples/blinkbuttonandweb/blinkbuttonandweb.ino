@@ -280,6 +280,7 @@ void setup()
     auto reportFunc = []() noexcept
     {
         for (;;) {
+            reportSema.setval(0);
             if (!reportSema.wait())
             {
                 Serial.println("report: wait failed");

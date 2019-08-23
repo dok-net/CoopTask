@@ -243,6 +243,31 @@ public:
         return true;
     }
 
+    /// @param newVal: the semaphore is immediately set to the specified value. if newVal is greater
+    /// than the current semaphore value, the behavior is identical to as many post operations.
+    bool setval(unsigned newVal)
+    {
+        CoopTaskBase* pendingTask = nullptr;
+        unsigned val;
+#if !defined(ESP32) && defined(ARDUINO)
+        {
+            InterruptLock lock;
+            val = value.load();
+            value.store(newVal);
+            if (newVal > val)
+            {
+                pendingTask = pendingTask0.load();
+                pendingTask0.store(nullptr);
+            }
+        }
+#else
+        val = value.exchange(newVal);
+        if (newVal > val) pendingTask = pendingTask0.exchange(nullptr);
+#endif
+        if (pendingTask && pendingTask->sleeping()) scheduleTask(pendingTask, true);
+        return true;
+    }
+
     /// @returns: true if sucessfully acquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
     bool wait()
     {
