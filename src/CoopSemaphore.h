@@ -207,17 +207,129 @@ class CoopSemaphore
 protected:
     std::atomic<unsigned> value;
     std::atomic<CoopTaskBase*> pendingTask0;
-    std::unique_ptr<circular_queue<CoopTaskBase*>> pendingTasks;
+    struct PendingUntil
+    {
+        CoopTaskBase* task;
+        uint32_t until;
+    };
+    std::unique_ptr<circular_queue<PendingUntil>> pendingTasks;
+
+
+    /// @param withDeadline true: the ms parameter specifies the relative timeout for a successful
+    /// aquisition of the semaphore.
+    /// false: there is no deadline, the ms parameter is disregarded.
+    /// @param ms the deadline timeout measured in milliseconds.
+    /// @returns: true if it sucessfully acquired the semaphore, either immediately or after sleeping.
+    /// false if the deadline expired, or the maximum number of pending tasks is exceeded.
+    bool _wait(const bool withDeadline, const uint32_t ms = 0)
+    {
+        uint32_t until = millis() + ms;
+        for (;;)
+        {
+            auto& self = CoopTaskBase::self();
+            unsigned val;
+#if !defined(ESP32) && defined(ARDUINO)
+            {
+                InterruptLock lock;
+                val = value.load();
+                if (val)
+                {
+                    value.store(val - 1);
+                }
+            }
+#else
+            val = 1;
+            while (val && !value.compare_exchange_weak(val, val - 1)) {}
+#endif
+            if (!val)
+            {
+                if (withDeadline) {
+                    if (static_cast<int32_t>(millis() - until) >= 0)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (!pendingTasks->push(PendingUntil{ &self, until }))
+                    {
+                        return false;
+                    }
+                    self.sleep(true);
+                }
+            }
+            CoopTaskBase* pendingTask = nullptr;
+            const bool forcePop = val > 1;
+            for (;;)
+            {
+                if (pendingTasks->available())
+                {
+#if !defined(ESP32) && defined(ARDUINO)
+                    InterruptLock lock;
+                    if (!(pendingTask = pendingTask0.load()) || forcePop)
+                    {
+                        pendingTask0.store(pendingTasks->pop().task);
+                    }
+#else
+                    bool exchd = false;
+                    while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_strong(pendingTask, pendingTasks->peek().task))) {}
+                    if (exchd) pendingTasks->pop();
+#endif
+                }
+                else
+                {
+#if !defined(ESP32) && defined(ARDUINO)
+                    InterruptLock lock;
+                    pendingTask = pendingTask0.load();
+                    pendingTask0.store(nullptr);
+#else
+                    while (!pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
+#endif
+                    if (val) val = 1;
+                }
+                if (val <= 1) break;
+                if (!pendingTask)
+                {
+                    continue;
+                }
+                val -= 1;
+
+                if (&self == pendingTask)
+                {
+                    self.sleep(false);
+                }
+                else if (pendingTask->sleeping())
+                {
+                    scheduleTask(pendingTask, true);
+                }
+            }
+            if (val) return true;
+            //if (withDeadline)
+            //{
+            //    // wait timeout has 1ms resolution only:
+            //    delay(1);
+            //}
+            //else
+            {
+#ifdef ESP32
+                yield();
+#else
+                CoopTaskBase::yield();
+#endif
+            }
+        }
+    }
+
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
-    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<CoopTaskBase*>(maxPending)) {}
+    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<PendingUntil>(maxPending)) {}
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-        pendingTasks->for_each([](CoopTaskBase*&& task) { task->sleep(false); });
+        pendingTasks->for_each([](PendingUntil&& task) { task.task->sleep(false); });
         pendingTasks.reset();
     }
 
@@ -268,86 +380,19 @@ public:
         return true;
     }
 
-    /// @returns: true if sucessfully acquired the semaphore, either immediately or after sleeping. false if maximum number of pending tasks is exceeded.
+    /// @returns: true if it sucessfully acquired the semaphore, either immediately or after sleeping.
+    /// false if the maximum number of pending tasks is exceeded.
     bool wait()
     {
-        for (;;)
-        {
-            auto& self = CoopTaskBase::self();
-            unsigned val;
-#if !defined(ESP32) && defined(ARDUINO)
-            {
-                InterruptLock lock;
-                val = value.load();
-                if (val)
-                {
-                    value.store(val - 1);
-                }
-            }
-#else
-            val = 1;
-            while (val && !value.compare_exchange_weak(val, val - 1)) {}
-#endif
-            if (!val)
-            {
-                if (!pendingTasks->push(&self))
-                {
-                    return false;
-                }
-                self.sleep(true);
-            }
-            CoopTaskBase* pendingTask = nullptr;
-            const bool forcePop = val > 1;
-            for (;;)
-            {
-                if (pendingTasks->available())
-                {
-#if !defined(ESP32) && defined(ARDUINO)
-                    InterruptLock lock;
-                    if (!(pendingTask = pendingTask0.load()) || forcePop)
-                    {
-                        pendingTask0.store(pendingTasks->pop());
-                    }
-#else
-                    bool exchd = false;
-                    while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_strong(pendingTask, pendingTasks->peek()))) {}
-                    if (exchd) pendingTasks->pop();
-#endif
-                }
-                else
-                {
-#if !defined(ESP32) && defined(ARDUINO)
-                    InterruptLock lock;
-                    pendingTask = pendingTask0.load();
-                    pendingTask0.store(nullptr);
-#else
-                    while (!pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
-#endif
-                    if (val) val = 1;
-                }
-                if (val <= 1) break;
-                if (!pendingTask)
-                {
-                    continue;
-                }
-                val -= 1;
+        return _wait(false);
+    }
 
-                if (&self == pendingTask)
-                {
-                    self.sleep(false);
-                }
-                else if (pendingTask->sleeping())
-                {
-                    scheduleTask(pendingTask, true);
-                }
-            }
-            if (val) return true;
-#ifdef ESP32
-            yield();
-#else
-            CoopTaskBase::yield();
-#endif
-        }
+    /// @param ms the deadline, measured in milliseconds, for a successful aquisition of the semaphore.
+    /// @returns: true if it sucessfully acquired the semaphore, either immediately or after sleeping.
+    /// false if the deadline expired, or the maximum number of pending tasks is exceeded.
+    bool wait(uint32_t ms)
+    {
+        return _wait(true, ms);
     }
 
     /// @returns: true if the semaphore was acquired immediately, otherwise false.

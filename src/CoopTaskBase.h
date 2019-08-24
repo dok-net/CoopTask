@@ -103,7 +103,7 @@ protected:
 #else
     CoopTaskBase(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
-        taskName(name), taskStackSize(stackSize), sleeps(false), func(_func)
+        taskName(name), taskStackSize(stackSize), delayed(false), sleeps(false), func(_func)
     {
     }
     CoopTaskBase(const CoopTaskBase&) = delete;
@@ -139,7 +139,7 @@ protected:
     uint32_t delay_exp = 0;
     bool init = false;
     bool cont = true;
-    bool delayed = false;
+    std::atomic<bool> delayed;
     std::atomic<bool> sleeps;
 
     static CoopTaskBase* current;
@@ -194,8 +194,8 @@ public:
     /// Modifies the sleep flag. if called from a running task, it is not immediately suspended.
     /// @param state true: a suspended task becomes sleeping, if call from the running task,
     /// the next call to yield() or delay() puts it into sleeping state.
-    /// false: clears the sleeping state of the task.
-    void IRAM_ATTR sleep(const bool state) noexcept { sleeps.store(state); }
+    /// false: clears the sleeping and delay state of the task.
+    void IRAM_ATTR sleep(const bool state) noexcept { sleeps.store(state); if (!state) delayed.store(false); }
 
     /// @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() noexcept { return current; }

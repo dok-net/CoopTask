@@ -115,7 +115,7 @@ uint32_t CoopTaskBase::run()
 {
     if (!cont) return 0;
     if (sleeps.load()) return 1;
-    if (delayed)
+    if (delayed.load())
     {
         if (delay_ms)
         {
@@ -128,7 +128,7 @@ uint32_t CoopTaskBase::run()
             if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
             if (delay_rem > 0) ::delayMicroseconds(delay_rem);
         }
-        delayed = false;
+        delayed.store(false);
     }
     auto val = setjmp(env);
     // val = 0: init; 1: exit() task; 2: yield task; 3: sleep task; >3: delay task until target delay_exp
@@ -153,7 +153,7 @@ uint32_t CoopTaskBase::run()
         }
         cont &= val > 1;
         sleeps.store(sleeps.load() | (val == 3));
-        delayed |= val > 3;
+        delayed.store(delayed.load() | (val > 3));
     }
     if (!cont) {
         delete[] taskStackTop;
@@ -203,7 +203,7 @@ uint32_t CoopTaskBase::run()
 {
     if (!cont) return 0;
     if (sleeps.load()) return 1;
-    if (delayed)
+    if (delayed.load())
     {
         if (delay_ms)
         {
@@ -216,7 +216,7 @@ uint32_t CoopTaskBase::run()
             if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
             if (delay_rem > 0) ::delayMicroseconds(delay_rem);
         }
-        delayed = false;
+        delayed.store(false);
     }
     current = this;
     if (!init && !initialize()) return false;
@@ -225,7 +225,7 @@ uint32_t CoopTaskBase::run()
 
     cont &= val > 1;
     sleeps.store(sleeps.load() | (val == 3));
-    delayed |= val > 3;
+    delayed.store(delayed.load() | (val > 3));
 
     if (!cont) {
         DeleteFiber(taskFiber);

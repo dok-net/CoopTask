@@ -74,14 +74,16 @@ private:
 };
 #endif
 
+CoopSemaphore blinkSema(0);
+
 int loopBlink() noexcept
 {
     for (;;)
     {
         digitalWrite(LED_BUILTIN, LOW);
-        delay(2000);
+        blinkSema.wait(2000);
         digitalWrite(LED_BUILTIN, HIGH);
-        delay(3000);
+        blinkSema.wait(3000);
     }
     return 0;
 }
@@ -145,7 +147,6 @@ CoopTask<uint32_t>* taskText;
 CoopTask<>* taskReport0;
 CoopTask<>* taskReport1;
 CoopTask<>* taskReport2;
-CoopTask<>* taskReport3;
 CoopSemaphore reportSema(0);
 #if defined(ESP8266) || defined(ESP32)
 CoopTask<>* taskWeb;
@@ -247,9 +248,9 @@ void setup()
 #endif
 
 #if defined(ESP8266) || defined(ESP32)
-    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x240);
+    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x400);
 #else
-    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x40);
+    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x70);
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
@@ -273,15 +274,14 @@ void setup()
 #if defined(ESP8266) || defined(ESP32)
     , 0x380);
 #else
-    , 0x68);
+    , 0x70);
 #endif
     if (!*taskText) Serial.println("CoopTask Text out of stack");
 
     auto reportFunc = []() noexcept
     {
         for (;;) {
-            reportSema.setval(0);
-            if (!reportSema.wait())
+            if (!reportSema.wait(30000))
             {
                 Serial.println("report: wait failed");
                 yield();
@@ -289,37 +289,31 @@ void setup()
             }
             Serial.println(CoopTask<>::self().name());
             printReport();
+            reportSema.setval(0);
         }
         return 0;
     };
     taskReport0 = new CoopTask<>(F("Report0"), reportFunc
 #if defined(ESP8266) || defined(ESP32)
-        , 0x380);
+        , 0x400);
 #else
-        , 0x68);
+        , 0x70);
 #endif
     if (!*taskReport0) Serial.println("CoopTask Report out of stack");
     taskReport1 = new CoopTask<>(F("Report1"), reportFunc
 #if defined(ESP8266) || defined(ESP32)
-        , 0x380);
+        , 0x400);
 #else
-        , 0x68);
+        , 0x70);
 #endif
     if (!*taskReport1) Serial.println("CoopTask Report out of stack");
     taskReport2 = new CoopTask<>(F("Report2"), reportFunc
 #if defined(ESP8266) || defined(ESP32)
-        , 0x380);
+        , 0x400);
 #else
-        , 0x68);
+        , 0x70);
 #endif
     if (!*taskReport2) Serial.println("CoopTask Report out of stack");
-    taskReport3 = new CoopTask<>(F("Report3"), reportFunc
-#if defined(ESP8266) || defined(ESP32)
-        , 0x380);
-#else
-        , 0x68);
-#endif
-    if (!*taskReport3) Serial.println("CoopTask Report out of stack");
 
 #if defined(ESP8266) || defined(ESP32)
     taskWeb = new CoopTask<>(F("Web"), []() noexcept
@@ -342,7 +336,6 @@ void setup()
     scheduleTask(taskReport0);
     scheduleTask(taskReport1);
     scheduleTask(taskReport2);
-    scheduleTask(taskReport3);
     scheduleTask(taskWeb);
 #endif
 #endif
@@ -362,7 +355,6 @@ uint32_t taskTextRunnable = 1;
 uint32_t taskReportRunnable0 = 1;
 uint32_t taskReportRunnable1 = 1;
 uint32_t taskReportRunnable2 = 1;
-uint32_t taskReportRunnable3 = 1;
 #if defined(ESP8266) || defined(ESP32)
 uint32_t taskWebRunnable = 1;
 #endif
@@ -389,7 +381,6 @@ void loop()
     if (taskReportRunnable0 != 0) taskReportRunnable0 = taskReport0->run();
     if (taskReportRunnable1 != 0) taskReportRunnable1 = taskReport1->run();
     if (taskReportRunnable2 != 0) taskReportRunnable2 = taskReport2->run();
-    if (taskReportRunnable3 != 0) taskReportRunnable3 = taskReport3->run();
 #if defined(ESP8266) || defined(ESP32)
     if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
 #endif
