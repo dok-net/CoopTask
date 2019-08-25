@@ -207,23 +207,18 @@ class CoopSemaphore
 protected:
     std::atomic<unsigned> value;
     std::atomic<CoopTaskBase*> pendingTask0;
-    struct PendingUntil
-    {
-        CoopTaskBase* task;
-        uint32_t until;
-    };
-    std::unique_ptr<circular_queue<PendingUntil>> pendingTasks;
+    std::unique_ptr<circular_queue<CoopTaskBase*>> pendingTasks;
 
 
     /// @param withDeadline true: the ms parameter specifies the relative timeout for a successful
     /// aquisition of the semaphore.
     /// false: there is no deadline, the ms parameter is disregarded.
-    /// @param ms the deadline timeout measured in milliseconds.
+    /// @param ms the relative timeout measured in milliseconds.
     /// @returns: true if it sucessfully acquired the semaphore, either immediately or after sleeping.
     /// false if the deadline expired, or the maximum number of pending tasks is exceeded.
     bool _wait(const bool withDeadline, const uint32_t ms = 0)
     {
-        uint32_t until = millis() + ms;
+        uint32_t start = millis();
         for (;;)
         {
             auto& self = CoopTaskBase::self();
@@ -244,14 +239,14 @@ protected:
             if (!val)
             {
                 if (withDeadline) {
-                    if (static_cast<int32_t>(millis() - until) >= 0)
+                    if (millis() - start >= ms)
                     {
                         return false;
                     }
                 }
                 else
                 {
-                    if (!pendingTasks->push(PendingUntil{ &self, until }))
+                    if (!pendingTasks->push(&self))
                     {
                         return false;
                     }
@@ -268,11 +263,11 @@ protected:
                     InterruptLock lock;
                     if (!(pendingTask = pendingTask0.load()) || forcePop)
                     {
-                        pendingTask0.store(pendingTasks->pop().task);
+                        pendingTask0.store(pendingTasks->pop());
                     }
 #else
                     bool exchd = false;
-                    while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_strong(pendingTask, pendingTasks->peek().task))) {}
+                    while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_strong(pendingTask, pendingTasks->peek()))) {}
                     if (exchd) pendingTasks->pop();
 #endif
                 }
@@ -304,12 +299,12 @@ protected:
                 }
             }
             if (val) return true;
-            //if (withDeadline)
-            //{
-            //    // wait timeout has 1ms resolution only:
-            //    delay(1);
-            //}
-            //else
+            if (withDeadline)
+            {
+                // wait timeout has 1ms resolution only:
+                delay(ms);
+            }
+            else
             {
 #ifdef ESP32
                 yield();
@@ -323,13 +318,13 @@ protected:
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
-    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<PendingUntil>(maxPending)) {}
+    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<CoopTaskBase*>(maxPending)) {}
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-        pendingTasks->for_each([](PendingUntil&& task) { task.task->sleep(false); });
+        pendingTasks->for_each([](CoopTaskBase*&& task) { task->sleep(false); });
         pendingTasks.reset();
     }
 
@@ -387,7 +382,7 @@ public:
         return _wait(false);
     }
 
-    /// @param ms the deadline, measured in milliseconds, for a successful aquisition of the semaphore.
+    /// @param ms the relative timeout, measured in milliseconds, for a successful aquisition of the semaphore.
     /// @returns: true if it sucessfully acquired the semaphore, either immediately or after sleeping.
     /// false if the deadline expired, or the maximum number of pending tasks is exceeded.
     bool wait(uint32_t ms)

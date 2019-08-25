@@ -151,7 +151,7 @@ void loop() {
     for (auto task : tasks)
     {
         if (!*task) continue;
-        if (!(*task)->run())
+        if ((*task)->run() < 0)
         {
             Serial.print("deleting task ");
             Serial.println((*task)->name());

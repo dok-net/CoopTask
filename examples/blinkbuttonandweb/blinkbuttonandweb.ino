@@ -348,15 +348,15 @@ void setup()
 
 #if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)
 #if defined(ESP8266) || defined(ESP32)
-uint32_t taskButtonRunnable = 1;
+int32_t taskButtonRunnable = 0;
 #endif
-uint32_t taskBlinkRunnable = 1;
-uint32_t taskTextRunnable = 1;
-uint32_t taskReportRunnable0 = 1;
-uint32_t taskReportRunnable1 = 1;
-uint32_t taskReportRunnable2 = 1;
+int32_t taskBlinkRunnable = 0;
+int32_t taskTextRunnable = 0;
+int32_t taskReportRunnable0 = 0;
+int32_t taskReportRunnable1 = 0;
+int32_t taskReportRunnable2 = 0;
 #if defined(ESP8266) || defined(ESP32)
-uint32_t taskWebRunnable = 1;
+int32_t taskWebRunnable = 0;
 #endif
 #endif
 
@@ -364,25 +364,25 @@ void loop()
 {
 #if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)
 #if defined(ESP8266) || defined(ESP32)
-    if (taskButtonRunnable != 0) taskButtonRunnable = taskButton->run();
+    if (taskButtonRunnable >= 0) taskButtonRunnable = taskButton->run();
 #endif
-    if (taskBlinkRunnable != 0) taskBlinkRunnable = taskBlink->run();
-    if (taskTextRunnable != 0)
+    if (taskBlinkRunnable >= 0) taskBlinkRunnable = taskBlink->run();
+    if (taskTextRunnable >= 0)
     {
         taskTextRunnable = taskText->run();
         // once when completed:
-        if (!taskTextRunnable)
+        if (taskTextRunnable < 0)
         {
             Serial.print(taskText->name());
             Serial.print(" returns = ");
             Serial.println(taskText->exitCode());
         }
     }
-    if (taskReportRunnable0 != 0) taskReportRunnable0 = taskReport0->run();
-    if (taskReportRunnable1 != 0) taskReportRunnable1 = taskReport1->run();
-    if (taskReportRunnable2 != 0) taskReportRunnable2 = taskReport2->run();
+    if (taskReportRunnable0 >= 0) taskReportRunnable0 = taskReport0->run();
+    if (taskReportRunnable1 >= 0) taskReportRunnable1 = taskReport1->run();
+    if (taskReportRunnable2 >= 0) taskReportRunnable2 = taskReport2->run();
 #if defined(ESP8266) || defined(ESP32)
-    if (taskWebRunnable != 0) taskWebRunnable = taskWeb->run();
+    if (taskWebRunnable >= 0) taskWebRunnable = taskWeb->run();
 #endif
 #endif
 

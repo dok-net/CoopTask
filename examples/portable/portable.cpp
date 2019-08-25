@@ -71,8 +71,8 @@ int main()
     {
         terminator.run();
         hello.run();
-        // once: hello posts terminatorSema -> terminator sets keepBlinking = false -> blink exits -> break leaves for loop -> program exits
-        if (!blink.run())
+        // once: hello posts terminatorSema -> terminator sets keepBlinking = false -> blink exits -> break leaves for-loop -> program exits
+        if (blink.run() < 0)
         {
             std::cerr << blink.name() << " returns = " << blink.exitCode() << std::endl;
             break;

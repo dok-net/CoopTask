@@ -134,9 +134,10 @@ protected:
     int val = 0;
     static void __stdcall taskFiberFunc(void*);
 #endif
-    // true: delay_exp is vs. millis(); false: delay_exp is vs. micros().
+    // true: delay_start/delay_duration are in milliseconds; false: delay_start/delay_duration are in microseconds.
     bool delay_ms = false;
-    uint32_t delay_exp = 0;
+    uint32_t delay_start = 0;
+    uint32_t delay_duration = 0;
     bool init = false;
     bool cont = true;
     std::atomic<bool> delayed;
@@ -144,7 +145,7 @@ protected:
 
     static CoopTaskBase* current;
 
-    bool initialize();
+    int32_t initialize();
     void doYield(uint32_t val) noexcept;
 
     void _exit() noexcept;
@@ -183,8 +184,8 @@ public:
     operator bool() noexcept { return cont; }
 #endif
 
-    /// @returns: 0: exited. 1: runnable or sleeping. >1: delayed until millis() or micros() deadline, check delayIsMs().
-    uint32_t run();
+    /// @returns: -1: exited. 0: runnable or sleeping. >0: delayed for milliseconds or microseconds, check delayIsMs().
+    int32_t run();
 
     /// @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
     uint32_t getFreeStack();
