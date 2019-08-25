@@ -23,21 +23,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "CoopTaskBase.h"
 #if defined(ESP8266)
 #include "circular_queue/circular_queue.h"
-#include <interrupts.h>
-using esp8266::InterruptLock;
 #elif defined(ESP32) || !defined(ARDUINO)
 #include "circular_queue/circular_queue.h"
-using std::min;
 #else
-class InterruptLock {
-public:
-    InterruptLock() {
-        noInterrupts();
-    }
-    ~InterruptLock() {
-        interrupts();
-    }
-};
 namespace std
 {
     extern "C" void atomic_thread_fence(std::memory_order) noexcept {}
@@ -216,104 +204,7 @@ protected:
     /// @param ms the relative timeout measured in milliseconds.
     /// @returns: true if it sucessfully acquired the semaphore, either immediately or after sleeping.
     /// false if the deadline expired, or the maximum number of pending tasks is exceeded.
-    bool _wait(const bool withDeadline, const uint32_t ms = 0)
-    {
-        uint32_t start = millis();
-        for (;;)
-        {
-            auto& self = CoopTaskBase::self();
-            unsigned val;
-#if !defined(ESP32) && defined(ARDUINO)
-            {
-                InterruptLock lock;
-                val = value.load();
-                if (val)
-                {
-                    value.store(val - 1);
-                }
-            }
-#else
-            val = 1;
-            while (val && !value.compare_exchange_weak(val, val - 1)) {}
-#endif
-            if (!val)
-            {
-                if (withDeadline) {
-                    if (millis() - start >= ms)
-                    {
-                        return false;
-                    }
-                }
-                else
-                {
-                    if (!pendingTasks->push(&self))
-                    {
-                        return false;
-                    }
-                    self.sleep(true);
-                }
-            }
-            CoopTaskBase* pendingTask = nullptr;
-            const bool forcePop = val > 1;
-            for (;;)
-            {
-                if (pendingTasks->available())
-                {
-#if !defined(ESP32) && defined(ARDUINO)
-                    InterruptLock lock;
-                    if (!(pendingTask = pendingTask0.load()) || forcePop)
-                    {
-                        pendingTask0.store(pendingTasks->pop());
-                    }
-#else
-                    bool exchd = false;
-                    while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_strong(pendingTask, pendingTasks->peek()))) {}
-                    if (exchd) pendingTasks->pop();
-#endif
-                }
-                else
-                {
-#if !defined(ESP32) && defined(ARDUINO)
-                    InterruptLock lock;
-                    pendingTask = pendingTask0.load();
-                    pendingTask0.store(nullptr);
-#else
-                    while (!pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
-#endif
-                    if (val) val = 1;
-                }
-                if (val <= 1) break;
-                if (!pendingTask)
-                {
-                    continue;
-                }
-                val -= 1;
-
-                if (&self == pendingTask)
-                {
-                    self.sleep(false);
-                }
-                else if (pendingTask->sleeping())
-                {
-                    scheduleTask(pendingTask, true);
-                }
-            }
-            if (val) return true;
-            if (withDeadline)
-            {
-                // wait timeout has 1ms resolution only:
-                delay(ms);
-            }
-            else
-            {
-#ifdef ESP32
-                yield();
-#else
-                CoopTaskBase::yield();
-#endif
-            }
-        }
-    }
+    bool _wait(const bool withDeadline, const uint32_t ms = 0);
 
 public:
     /// @param val the initial value of the semaphore.
@@ -330,50 +221,11 @@ public:
 
     /// post() is the only operation that is allowed from an interrupt service routine,
     /// or a concurrent OS thread that is synchronized with the singled thread running CoopTasks.
-    bool IRAM_ATTR post()
-    {
-        CoopTaskBase* pendingTask;
-#if !defined(ESP32) && defined(ARDUINO)
-        {
-            InterruptLock lock;
-            unsigned val = value.load();
-            value.store(val + 1);
-            pendingTask = pendingTask0.load();
-            pendingTask0.store(nullptr);
-        }
-#else
-        unsigned val = 0;
-        while (!value.compare_exchange_weak(val, val + 1)) {}
-        pendingTask = pendingTask0.exchange(nullptr);
-#endif
-        if (pendingTask && pendingTask->sleeping()) scheduleTask(pendingTask, true);
-        return true;
-    }
+    bool IRAM_ATTR post();
 
     /// @param newVal: the semaphore is immediately set to the specified value. if newVal is greater
     /// than the current semaphore value, the behavior is identical to as many post operations.
-    bool setval(unsigned newVal)
-    {
-        CoopTaskBase* pendingTask = nullptr;
-        unsigned val;
-#if !defined(ESP32) && defined(ARDUINO)
-        {
-            InterruptLock lock;
-            val = value.load();
-            value.store(newVal);
-            if (newVal > val)
-            {
-                pendingTask = pendingTask0.load();
-                pendingTask0.store(nullptr);
-            }
-        }
-#else
-        val = value.exchange(newVal);
-        if (newVal > val) pendingTask = pendingTask0.exchange(nullptr);
-#endif
-        if (pendingTask && pendingTask->sleeping()) scheduleTask(pendingTask, true);
-        return true;
-    }
+    bool setval(unsigned newVal);
 
     /// @returns: true if it sucessfully acquired the semaphore, either immediately or after sleeping.
     /// false if the maximum number of pending tasks is exceeded.
@@ -391,24 +243,7 @@ public:
     }
 
     /// @returns: true if the semaphore was acquired immediately, otherwise false.
-    bool try_wait()
-    {
-        unsigned val;
-#if !defined(ESP32) && defined(ARDUINO)
-        {
-            InterruptLock lock;
-            val = value.load();
-            if (val)
-            {
-                value.store(val - 1);
-            }
-        }
-#else
-        val = 1;
-        while (val && !value.compare_exchange_weak(val, val - 1)) {}
-#endif
-        return val;
-    }
+    bool try_wait();
 };
 
 #endif // __CoopSemaphore_h

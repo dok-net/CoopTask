@@ -16,15 +16,16 @@ void printStackReport(BasicCoopTask<>& task)
 int main()
 {
     CoopSemaphore terminatorSema(0);
+    CoopSemaphore helloSema(0);
 
-    CoopTask<> hello(std::string("hello"), [&terminatorSema]() noexcept
+    CoopTask<> hello(std::string("hello"), [&terminatorSema, &helloSema]() noexcept
         {
             std::cerr << "Hello" << std::endl;
             yield();
             for (int x = 0; x < 10; ++x)
             {
                 std::cerr << "Loop" << std::endl;
-                delay(2000);
+                helloSema.wait(2000);
             }
             terminatorSema.post();
             return 0;
