@@ -103,7 +103,7 @@ protected:
 #else
     CoopTaskBase(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
-        taskName(name), taskStackSize(stackSize), delayed(false), sleeps(false), func(_func)
+        taskName(name), taskStackSize(stackSize), delays(false), sleeps(false), func(_func)
     {
     }
     CoopTaskBase(const CoopTaskBase&) = delete;
@@ -140,7 +140,7 @@ protected:
     uint32_t delay_duration = 0;
     bool init = false;
     bool cont = true;
-    std::atomic<bool> delayed;
+    std::atomic<bool> delays;
     std::atomic<bool> sleeps;
 
     static CoopTaskBase* current;
@@ -196,7 +196,7 @@ public:
     /// @param state true: a suspended task becomes sleeping, if call from the running task,
     /// the next call to yield() or delay() puts it into sleeping state.
     /// false: clears the sleeping and delay state of the task.
-    void IRAM_ATTR sleep(const bool state) noexcept { sleeps.store(state); if (!state) delayed.store(false); }
+    void IRAM_ATTR sleep(const bool state) noexcept { sleeps.store(state); if (!state) delays.store(false); }
 
     /// @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() noexcept { return current; }
@@ -205,6 +205,8 @@ public:
     static CoopTaskBase& self() noexcept { return *current; }
 
     bool sleeping() const noexcept { return sleeps.load(); }
+    bool delayed() const noexcept { return delays.load(); }
+    bool suspended() const noexcept { return sleeps.load() || delays.load(); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,

@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #else
 namespace std
 {
-    extern "C" void atomic_thread_fence(std::memory_order) noexcept {}
     template< typename T > using function = T *;
 }
 
@@ -116,11 +115,7 @@ bool IRAM_ATTR circular_queue<T>::push(T&& val)
         return false;
     }
 
-    std::atomic_thread_fence(std::memory_order_acquire);
-
     m_buffer[inPos] = std::move(val);
-
-    std::atomic_thread_fence(std::memory_order_release);
 
     m_inPos.store(next, std::memory_order_release);
     return true;
@@ -132,11 +127,7 @@ T circular_queue<T>::pop()
     const auto outPos = m_outPos.load(std::memory_order_acquire);
     if (m_inPos.load(std::memory_order_relaxed) == outPos) return defaultValue;
 
-    std::atomic_thread_fence(std::memory_order_acquire);
-
     auto val = std::move(m_buffer[outPos]);
-
-    std::atomic_thread_fence(std::memory_order_release);
 
     m_outPos.store((outPos + 1) % m_bufSize, std::memory_order_release);
     return val;
@@ -147,11 +138,9 @@ void circular_queue<T>::for_each(std::function<void(T&&)> fun)
 {
     auto outPos = m_outPos.load(std::memory_order_acquire);
     const auto inPos = m_inPos.load(std::memory_order_relaxed);
-    std::atomic_thread_fence(std::memory_order_acquire);
     while (outPos != inPos)
     {
         fun(std::move(m_buffer[outPos]));
-        std::atomic_thread_fence(std::memory_order_release);
         outPos = (outPos + 1) % m_bufSize;
         m_outPos.store(outPos, std::memory_order_release);
     }
@@ -162,7 +151,6 @@ bool circular_queue<T>::for_each_rev_requeue(std::function<bool(T&)> fun)
 {
     auto inPos0 = circular_queue<T>::m_inPos.load(std::memory_order_acquire);
     auto outPos = circular_queue<T>::m_outPos.load(std::memory_order_relaxed);
-    std::atomic_thread_fence(std::memory_order_acquire);
     if (outPos == inPos0) return false;
     auto pos = inPos0;
     auto outPos1 = inPos0;

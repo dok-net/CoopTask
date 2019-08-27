@@ -281,7 +281,7 @@ void setup()
     auto reportFunc = []() noexcept
     {
         for (;;) {
-            if (!reportSema.wait(30000))
+            if (!reportSema.wait(120000))
             {
                 Serial.println("report: wait failed");
                 yield();

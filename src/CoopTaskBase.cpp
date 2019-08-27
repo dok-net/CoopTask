@@ -115,7 +115,7 @@ int32_t CoopTaskBase::run()
 {
     if (!cont) return -1;
     if (sleeps.load()) return 0;
-    if (delayed.load())
+    if (delays.load())
     {
         if (delay_ms)
         {
@@ -132,7 +132,7 @@ int32_t CoopTaskBase::run()
                 ::delayMicroseconds(delay_rem);
             }
         }
-        delayed.store(false);
+        delays.store(false);
     }
     auto val = setjmp(env);
     // val = 0: init; -1: exit() task; 1: yield task; 2: sleep task; 3: delay task for delay_duration
@@ -157,7 +157,7 @@ int32_t CoopTaskBase::run()
         }
         cont &= val > 0;
         sleeps.store(sleeps.load() | (val == 2));
-        delayed.store(delayed.load() | (val > 2));
+        delays.store(delays.load() | (val > 2));
     }
     if (!cont) {
         delete[] taskStackTop;
@@ -208,7 +208,7 @@ int32_t CoopTaskBase::run()
 {
     if (!cont) return -1;
     if (sleeps.load()) return 0;
-    if (delayed.load())
+    if (delays.load())
     {
         if (delay_ms)
         {
@@ -225,7 +225,8 @@ int32_t CoopTaskBase::run()
                 ::delayMicroseconds(delay_rem);
             }
         }
-        delayed.store(false);
+        delays.store(false);
+        delay_duration = 0;
     }
     current = this;
     if (!init && initialize() < 0) return -1;
@@ -235,7 +236,7 @@ int32_t CoopTaskBase::run()
     // val = 0: init; -1: exit() task; 1: yield task; 2: sleep task; 3: delay task for delay_duration
     cont &= val > 0;
     sleeps.store(sleeps.load() | (val == 2));
-    delayed.store(delayed.load() | (val > 2));
+    delays.store(delays.load() | (val > 2));
 
     if (!cont) {
         DeleteFiber(taskFiber);
@@ -331,8 +332,7 @@ void CoopTaskBase::_delayMicroseconds(uint32_t us) noexcept
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
 bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us)
 {
-    if (task->sleeping())
-        return false;
+    if (task->sleeping()) return false;
     auto stat = task->run();
     switch (stat)
     {
@@ -362,7 +362,11 @@ bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us)
 bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup)
 {
     if (!*task) return false;
-    if (wakeup) task->sleep(false);
+    if (wakeup)
+    {
+        // TODO: cancel any delay entry for this task from the scheduler
+        task->sleep(false);
+    }
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
     return schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
 #else
