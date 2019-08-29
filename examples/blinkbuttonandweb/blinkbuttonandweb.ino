@@ -81,9 +81,9 @@ int loopBlink() noexcept
     for (;;)
     {
         digitalWrite(LED_BUILTIN, LOW);
-        blinkSema.wait(2000);
+        blinkSema.wait(1000);
         digitalWrite(LED_BUILTIN, HIGH);
-        blinkSema.wait(3000);
+        blinkSema.wait(4000);
     }
     return 0;
 }
@@ -330,13 +330,13 @@ void setup()
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
-    scheduleTask(taskButton);
-    scheduleTask(taskBlink);
-    scheduleTask(taskText);
-    scheduleTask(taskReport0);
-    scheduleTask(taskReport1);
-    scheduleTask(taskReport2);
-    scheduleTask(taskWeb);
+    if (!scheduleTask(taskButton)) { Serial.printf("Could not schedule task %s\n", taskButton->name().c_str()); }
+    if (!scheduleTask(taskBlink)) { Serial.printf("Could not schedule task %s\n", taskBlink->name().c_str()); }
+    if (!scheduleTask(taskText)) { Serial.printf("Could not schedule task %s\n", taskText->name().c_str()); }
+    if (!scheduleTask(taskReport0)) { Serial.printf("Could not schedule task %s\n", taskReport0->name().c_str()); }
+    if (!scheduleTask(taskReport1)) { Serial.printf("Could not schedule task %s\n", taskReport1->name().c_str()); }
+    if (!scheduleTask(taskReport2)) { Serial.printf("Could not schedule task %s\n", taskReport2->name().c_str()); }
+    if (!scheduleTask(taskWeb)) { Serial.printf("Could not schedule task %s\n", taskWeb->name().c_str()); }
 #endif
 #endif
 

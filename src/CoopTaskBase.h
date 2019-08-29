@@ -196,7 +196,7 @@ public:
     /// @param state true: a suspended task becomes sleeping, if call from the running task,
     /// the next call to yield() or delay() puts it into sleeping state.
     /// false: clears the sleeping and delay state of the task.
-    void IRAM_ATTR sleep(const bool state) noexcept { sleeps.store(state); if (!state) delays.store(false); }
+    void IRAM_ATTR sleep(const bool state) noexcept;
 
     /// @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() noexcept { return current; }
@@ -205,7 +205,7 @@ public:
     static CoopTaskBase& self() noexcept { return *current; }
 
     bool sleeping() const noexcept { return sleeps.load(); }
-    bool delayed() const noexcept { return delays.load(); }
+    const std::atomic<bool>& delayed() const noexcept { return delays; }
     bool suspended() const noexcept { return sleeps.load() || delays.load(); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted

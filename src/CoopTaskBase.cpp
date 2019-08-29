@@ -274,6 +274,11 @@ uint32_t CoopTaskBase::getFreeStack()
 #endif // _MSC_VER
 }
 
+void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
+{
+    sleeps.store(state); if (!state) delays.store(false);
+}
+
 void CoopTaskBase::doYield(uint32_t val) noexcept
 {
 #ifndef _MSC_VER
@@ -342,16 +347,16 @@ bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us)
     case 0: // runnable or sleeping.
         if (task->sleeping()) return false;
         if (repeat_us) {
-            schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
-            return false;
+            // rather keep scheduling at wrong delayed interval than drop altogether
+            return !schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
         }
         break;
     default: // delayed for stat milliseconds or microseconds, check delayIsMs().
         if (task->sleeping()) return false;
         auto next_repeat_us = task->delayIsMs() ? stat * 1000 : stat;
         if (static_cast<uint32_t>(next_repeat_us) != repeat_us) {
-            schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us);
-            return false;
+            // rather keep scheduling at wrong interval than drop altogether
+            return !schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us, &task->delayed());
         }
         break;
     }
@@ -364,7 +369,6 @@ bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup)
     if (!*task) return false;
     if (wakeup)
     {
-        // TODO: cancel any delay entry for this task from the scheduler
         task->sleep(false);
     }
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
