@@ -192,7 +192,7 @@ protected:
     /// @param ms the relative timeout measured in milliseconds.
     /// @returns: true if it sucessfully acquired the semaphore, either immediately or after sleeping.
     /// false if the deadline expired, or the maximum number of pending tasks is exceeded.
-    bool _wait(const bool withDeadline, const uint32_t ms = 0);
+    bool _wait(const bool withDeadline = false, const uint32_t ms = 0);
 
 public:
     /// @param val the initial value of the semaphore.
@@ -223,7 +223,7 @@ public:
     /// false if the maximum number of pending tasks is exceeded.
     bool wait()
     {
-        return _wait(false);
+        return _wait();
     }
 
     /// @param ms the relative timeout, measured in milliseconds, for a successful aquisition of the semaphore.

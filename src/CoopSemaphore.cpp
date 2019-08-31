@@ -49,8 +49,9 @@ namespace
 
 bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
 {
-    const uint32_t start = millis();
+    const uint32_t start = withDeadline ? millis() : 0;
     uint32_t expired = 0;
+    bool finalIteration = false;
     for (;;)
     {
         auto& self = CoopTaskBase::self();
@@ -68,11 +69,16 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         val = 1;
         while (val && !value.compare_exchange_weak(val, val - 1)) {}
 #endif
-        if (!val)
+        if (!val && !finalIteration)
         {
-            expired = millis() - start;
-            if (withDeadline && expired >= ms) return false;
+            if (withDeadline)
+            {
+                expired = millis() - start;
+                if (expired >= ms) return false;
+
+            }
             if (!pendingTasks->push(&self)) return false;
+            if (!withDeadline) self.sleep(true);
         }
         CoopTaskBase* pendingTask = nullptr;
         const bool forcePop = val > 1;
@@ -88,7 +94,8 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
                 }
 #else
                 bool exchd = false;
-                while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_strong(pendingTask, pendingTasks->peek()))) {}
+                pendingTask = nullptr;
+                while ((!pendingTask || forcePop) && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks->peek()))) {}
                 if (exchd) pendingTasks->pop();
 #endif
             }
@@ -103,7 +110,15 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
 #endif
                 if (val) val = 1;
             }
-            if (val <= 1) break;
+            if (val == 1)
+            {
+                self.sleep(false);
+                return true;
+            }
+            else if (!val)
+            {
+                break;
+            }
             if (!pendingTask)
             {
                 continue;
@@ -116,17 +131,20 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
                 else { scheduleTask(pendingTask, true); }
             }
         }
-        if (val) return true;
+        if (finalIteration) return true;
         if (withDeadline)
         {
 
             delay(expired >= ms ? 0 : ms - expired);
 #if !defined(ESP32) && defined(ARDUINO)
-            InterruptLock lock;
-            pendingTask = pendingTask0.load();
-            if (pendingTask == &self) pendingTask0.store(nullptr);
+            {
+                InterruptLock lock;
+                pendingTask = pendingTask0.load();
+                if (pendingTask == &self) pendingTask0.store(nullptr);
+            }
 #else
-            if (pendingTask == &self && !pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
+            pendingTask = &self;
+            while (pendingTask == &self && !pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
 #endif
             if (pendingTask != &self) pendingTasks->for_each_rev_requeue([](CoopTaskBase*& pendingTask)
                 {
@@ -135,8 +153,9 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         }
         else
         {
-            CoopTaskBase::sleep();
+            yield();
         }
+        finalIteration = true;
     }
 }
 
@@ -157,12 +176,9 @@ bool IRAM_ATTR CoopSemaphore::post()
     pendingTask = pendingTask0.exchange(nullptr);
 #endif
     if (!pendingTask || !pendingTask->suspended()) return true;
-    if (pendingTask->delayed().load())
-    {
-        pendingTask->sleep(false);
-        return true;
-    }
-    return scheduleTask(pendingTask, true);
+    if (pendingTask->sleeping()) return scheduleTask(pendingTask, true);
+    pendingTask->sleep(false);
+    return true;
 }
 
 bool CoopSemaphore::setval(unsigned newVal)
