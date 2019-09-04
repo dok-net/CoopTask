@@ -89,6 +89,10 @@ namespace std
 #define IRAM_ATTR
 #endif
 
+#ifdef _MSC_VER
+#define __attribute__(_)
+#endif
+
 class CoopTaskBase
 {
 protected:
