@@ -147,10 +147,12 @@ CoopTask<uint32_t>* taskText;
 CoopTask<>* taskReport0;
 CoopTask<>* taskReport1;
 CoopTask<>* taskReport2;
-CoopSemaphore reportSema(0);
 #if defined(ESP8266) || defined(ESP32)
+CoopTask<>* taskReport3;
+CoopTask<>* taskReport4;
 CoopTask<>* taskWeb;
 #endif
+CoopSemaphore reportSema(0);
 
 void printStackReport(CoopTaskBase* task)
 {
@@ -318,6 +320,21 @@ void setup()
     if (!*taskReport2) Serial.println("CoopTask Report out of stack");
 
 #if defined(ESP8266) || defined(ESP32)
+    taskReport3 = new CoopTask<>(F("Report3"), reportFunc
+#if defined(ESP8266) || defined(ESP32)
+        , 0x600);
+#else
+        , 0x70);
+#endif
+    if (!*taskReport3) Serial.println("CoopTask Report out of stack");
+    taskReport4 = new CoopTask<>(F("Report4"), reportFunc
+#if defined(ESP8266) || defined(ESP32)
+        , 0x600);
+#else
+        , 0x70);
+#endif
+    if (!*taskReport4) Serial.println("CoopTask Report out of stack");
+
     taskWeb = new CoopTask<>(F("Web"), []() noexcept
         {
             for (;;) {
@@ -338,6 +355,8 @@ void setup()
     if (!scheduleTask(taskReport0)) { Serial.printf("Could not schedule task %s\n", taskReport0->name().c_str()); }
     if (!scheduleTask(taskReport1)) { Serial.printf("Could not schedule task %s\n", taskReport1->name().c_str()); }
     if (!scheduleTask(taskReport2)) { Serial.printf("Could not schedule task %s\n", taskReport2->name().c_str()); }
+    if (!scheduleTask(taskReport3)) { Serial.printf("Could not schedule task %s\n", taskReport3->name().c_str()); }
+    if (!scheduleTask(taskReport4)) { Serial.printf("Could not schedule task %s\n", taskReport4->name().c_str()); }
     if (!scheduleTask(taskWeb)) { Serial.printf("Could not schedule task %s\n", taskWeb->name().c_str()); }
 #endif
 #endif
@@ -358,6 +377,8 @@ int32_t taskReportRunnable0 = 0;
 int32_t taskReportRunnable1 = 0;
 int32_t taskReportRunnable2 = 0;
 #if defined(ESP8266) || defined(ESP32)
+int32_t taskReportRunnable3 = 0;
+int32_t taskReportRunnable4 = 0;
 int32_t taskWebRunnable = 0;
 #endif
 #endif
@@ -387,6 +408,8 @@ void loop()
     runTask(taskReportRunnable1, taskReport1);
     runTask(taskReportRunnable2, taskReport2);
 #if defined(ESP8266) || defined(ESP32)
+    runTask(taskReportRunnable3, taskReport3);
+    runTask(taskReportRunnable4, taskReport4);
     runTask(taskWebRunnable, taskWeb);
 #endif
 #endif
