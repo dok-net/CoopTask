@@ -156,9 +156,9 @@ int32_t CoopTaskBase::run()
             printf("FATAL ERROR: CoopTask %s stack overflow\n", name().c_str());
             ::abort();
         }
-        cont &= val > 0;
-        sleeps.store(sleeps.load() | (val == 2));
-        delays.store(delays.load() | (val > 2));
+        cont = cont && (val > 0);
+        sleeps.store(sleeps.load() || (val == 2));
+        delays.store(delays.load() || (val > 2));
     }
     if (!cont) {
         delete[] taskStackTop;
@@ -235,9 +235,9 @@ int32_t CoopTaskBase::run()
     current = nullptr;
 
     // val = 0: init; -1: exit() task; 1: yield task; 2: sleep task; 3: delay task for delay_duration
-    cont &= val > 0;
-    sleeps.store(sleeps.load() | (val == 2));
-    delays.store(delays.load() | (val > 2));
+    cont = cont && (val > 0);
+    sleeps.store(sleeps.load() || (val == 2));
+    delays.store(delays.load() || (val > 2));
 
     if (!cont) {
         DeleteFiber(taskFiber);
@@ -279,12 +279,6 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 {
     sleeps.store(state); if (!state) delays.store(false);
 }
-
-bool IRAM_ATTR CoopTaskBase::suspended() const noexcept
-{
-    return sleeps.load() || delays.load();
-}
-
 
 void CoopTaskBase::doYield(uint32_t val) noexcept
 {
@@ -344,7 +338,6 @@ void CoopTaskBase::_delayMicroseconds(uint32_t us) noexcept
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
 bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us)
 {
-    if (task->sleeping()) return false;
     auto stat = task->run();
     if (task->sleeping()) return false;
     switch (stat)
@@ -377,7 +370,7 @@ bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup)
         task->sleep(false);
     }
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
-    return schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
+    return schedule_function([task]() { rescheduleTask(task, 1); });
 #else
     return true;
 #endif

@@ -283,33 +283,35 @@ void setup()
         for (;;) {
             if (!reportSema.wait(120000))
             {
-                Serial.println("report: wait failed");
+                Serial.print(CoopTaskBase::self().name().c_str());
+                Serial.println(": wait failed");
                 yield();
                 continue;
             }
             Serial.println(CoopTask<>::self().name());
             printReport();
+            yield();
             reportSema.setval(0);
         }
         return 0;
     };
     taskReport0 = new CoopTask<>(F("Report0"), reportFunc
 #if defined(ESP8266) || defined(ESP32)
-        , 0x400);
+        , 0x600);
 #else
         , 0x70);
 #endif
     if (!*taskReport0) Serial.println("CoopTask Report out of stack");
     taskReport1 = new CoopTask<>(F("Report1"), reportFunc
 #if defined(ESP8266) || defined(ESP32)
-        , 0x400);
+        , 0x600);
 #else
         , 0x70);
 #endif
     if (!*taskReport1) Serial.println("CoopTask Report out of stack");
     taskReport2 = new CoopTask<>(F("Report2"), reportFunc
 #if defined(ESP8266) || defined(ESP32)
-        , 0x400);
+        , 0x600);
 #else
         , 0x70);
 #endif
@@ -360,36 +362,40 @@ int32_t taskWebRunnable = 0;
 #endif
 #endif
 
+template<typename T> void runTask(int32_t& runnable, CoopTask<T>* task)
+{
+    if (runnable >= 0)
+    {
+        runnable = task->run();
+        // once when completed:
+        if (runnable < 0)
+        {
+            Serial.print(task->name()); Serial.print(" returns = "); Serial.println(task->exitCode());
+        }
+    }
+}
+
 void loop()
 {
 #if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)
 #if defined(ESP8266) || defined(ESP32)
-    if (taskButtonRunnable >= 0) taskButtonRunnable = taskButton->run();
+    runTask(taskButtonRunnable, taskButton);
 #endif
-    if (taskBlinkRunnable >= 0) taskBlinkRunnable = taskBlink->run();
-    if (taskTextRunnable >= 0)
-    {
-        taskTextRunnable = taskText->run();
-        // once when completed:
-        if (taskTextRunnable < 0)
-        {
-            Serial.print(taskText->name());
-            Serial.print(" returns = ");
-            Serial.println(taskText->exitCode());
-        }
-    }
-    if (taskReportRunnable0 >= 0) taskReportRunnable0 = taskReport0->run();
-    if (taskReportRunnable1 >= 0) taskReportRunnable1 = taskReport1->run();
-    if (taskReportRunnable2 >= 0) taskReportRunnable2 = taskReport2->run();
+    runTask(taskBlinkRunnable, taskBlink);
+    runTask(taskTextRunnable, taskText);
+    runTask(taskReportRunnable0, taskReport0);
+    runTask(taskReportRunnable1, taskReport1);
+    runTask(taskReportRunnable2, taskReport2);
 #if defined(ESP8266) || defined(ESP32)
-    if (taskWebRunnable >= 0) taskWebRunnable = taskWeb->run();
+    runTask(taskWebRunnable, taskWeb);
 #endif
 #endif
 
     // taskReport sleeps on first run(), and after each report.
     // It resets reportCnt to 0 on each report.
     ++reportCnt;
-    if (reportCnt > 200000) {
+    if (reportCnt > 200000)
+    {
         reportSema.post();
     }
 }

@@ -204,9 +204,9 @@ public:
     /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
     static CoopTaskBase& self() noexcept { return *current; }
 
-    bool IRAM_ATTR sleeping() const noexcept { return sleeps.load(); }
-    const std::atomic<bool>& IRAM_ATTR delayed() const noexcept { return delays; }
-    bool IRAM_ATTR suspended() const noexcept;
+    inline bool IRAM_ATTR sleeping() const noexcept __attribute__((always_inline)) { return sleeps.load(); }
+    inline const std::atomic<bool>& IRAM_ATTR delayed() const noexcept __attribute__((always_inline)) { return delays; }
+    inline bool IRAM_ATTR suspended() const noexcept __attribute__((always_inline)) { return sleeps.load() || delays.load(); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
