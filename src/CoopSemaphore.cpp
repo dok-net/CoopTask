@@ -90,12 +90,12 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
                 {
                     InterruptLock lock;
                     pendingTask = pendingTask0.load();
-                    if (!(pendingTask || selfFirst)) pendingTask0.store(pendingTasks->pop());
+                    if (!pendingTask && !selfFirst) pendingTask0.store(pendingTasks->pop());
                 }
 #else
                 bool exchd = false;
                 pendingTask = nullptr;
-                while (!(pendingTask || selfFirst) && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks->peek()))) {}
+                while (!pendingTask && !selfFirst && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks->peek()))) {}
                 if (exchd) pendingTasks->pop();
 #endif
             }
@@ -109,7 +109,7 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
                 }
 #else
                 pendingTask = nullptr;
-                while (!(pendingTask || selfFirst) && !pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
+                while (!pendingTask && !selfFirst && !pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
 #endif
             }
             if (selfFirst) pendingTask = &self;

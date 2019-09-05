@@ -35,16 +35,20 @@ void yieldMutex()
     hasMutex = nullptr;
 }
 
-CoopTaskBase* firstTask;
-CoopTaskBase* secondTask;
-CoopTaskBase* thirdTask;
+CoopTask<int>* firstTask;
+CoopTask<int>* secondTask;
+CoopTask<int>* thirdTask;
 
 #ifndef ESP8266
-CoopTaskBase** tasks[] = { &firstTask, &secondTask, &thirdTask };
+CoopTask<int>** tasks[] = { &firstTask, &secondTask, &thirdTask };
 #endif
 
 void setup() {
+#ifdef ESP8266
+    Serial.begin(74880);
+#else
     Serial.begin(115200);
+#endif
     Serial.println("Mutex test");
 
     firstTask = scheduleTask("first", []()
@@ -66,7 +70,9 @@ void setup() {
                     yieldMutex();
                 }
                 Serial.print(CoopTaskBase::self().name());
-                Serial.println(" runs");
+                Serial.print(" runs (");
+                Serial.print(i);
+                Serial.println(")");
                 yield();
             }
             return 0;
@@ -96,7 +102,9 @@ void setup() {
                     yieldMutex();
                 }
                 Serial.print(CoopTaskBase::self().name());
-                Serial.println(" runs");
+                Serial.print(" runs (");
+                Serial.print(i);
+                Serial.println(")");
                 yield();
             }
             return 0;
@@ -126,13 +134,17 @@ void setup() {
                     yieldMutex();
                 }
                 Serial.print(CoopTaskBase::self().name());
-                Serial.println(" runs");
+                Serial.print(" runs (");
+                Serial.print(i);
+                Serial.println(")");
                 yield();
             }
             for (int i = 0; i < 10; ++i)
             {
                 Serial.print(CoopTaskBase::self().name());
-                Serial.println(" still runs");
+                Serial.print(" still runs (");
+                Serial.print(i);
+                Serial.println(")");
                 yield();
             }
             return 0;
@@ -155,7 +167,7 @@ void loop() {
         {
             Serial.print("deleting task ");
             Serial.println((*task)->name());
-            delete *task;
+            delete* task;
             *task = nullptr;
         }
     }
