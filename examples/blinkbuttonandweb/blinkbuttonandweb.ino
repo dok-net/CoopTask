@@ -282,6 +282,7 @@ void setup()
 
     auto reportFunc = []() noexcept
     {
+        uint32_t count = 0;
         for (;;) {
             if (!reportSema.wait(120000))
             {
@@ -290,7 +291,10 @@ void setup()
                 yield();
                 continue;
             }
-            Serial.println(CoopTask<>::self().name());
+            Serial.print(CoopTask<>::self().name());
+            Serial.print(" (");
+            Serial.print(++count);
+            Serial.println("x)");
             printReport();
             yield();
             reportSema.setval(0);
