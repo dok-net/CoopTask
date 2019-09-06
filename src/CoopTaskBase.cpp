@@ -353,7 +353,9 @@ bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us)
         }
         break;
     default: // delayed for stat milliseconds or microseconds, check delayIsMs().
-        auto next_repeat_us = task->delayIsMs() ? stat * 1000 : stat;
+        uint32_t next_repeat_us = task->delayIsMs() ? stat * 1000 : stat;
+        if (next_repeat_us > 26000000) next_repeat_us = 26000000;
+        if (next_repeat_us == repeat_us) break;
         // rather keep scheduling at wrong interval than drop altogether
         return !schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us, &task->delayed());
         break;
