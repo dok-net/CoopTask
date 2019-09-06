@@ -69,8 +69,9 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         val = 1;
         while (val && !value.compare_exchange_weak(val, val - 1)) {}
 #endif
+        const unsigned valOnEntry = val;
         if (withDeadline) expired = millis() - start;
-        if (!selfFirst)
+        if (!(selfFirst && valOnEntry))
         {
             if (pendingTasks->push(&self))
             {
@@ -81,6 +82,8 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
                 selfFirst = true;
             }
         }
+        bool fwd = !selfFirst && val;
+        bool stop = false;
         CoopTaskBase* pendingTask = nullptr;
         for (;;)
         {
@@ -90,12 +93,12 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
                 {
                     InterruptLock lock;
                     pendingTask = pendingTask0.load();
-                    if (!pendingTask && !selfFirst) pendingTask0.store(pendingTasks->pop());
+                    if (fwd || !pendingTask) pendingTask0.store(pendingTasks->pop());
                 }
 #else
-                bool exchd = false;
                 pendingTask = nullptr;
-                while (!pendingTask && !selfFirst && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks->peek()))) {}
+                bool exchd = false;
+                while ((fwd || !pendingTask) && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks->peek()))) {}
                 if (exchd) pendingTasks->pop();
 #endif
             }
@@ -105,31 +108,59 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
                 {
                     InterruptLock lock;
                     pendingTask = pendingTask0.load();
-                    if (!selfFirst) pendingTask0.store(nullptr);
+                    if (fwd && pendingTask) pendingTask0.store(nullptr);
                 }
 #else
                 pendingTask = nullptr;
-                while (!pendingTask && !selfFirst && !pendingTask0.compare_exchange_weak(pendingTask, nullptr)) {}
+                if (fwd) pendingTask = pendingTask0.exchange(nullptr);
 #endif
+                stop = true;
             }
-            if (selfFirst) pendingTask = &self;
-            if (!(val && pendingTask))
+            if (!val)
             {
                 break;
+            }
+            if (!(pendingTask || stop))
+            {
+                continue;
+            }
+            if (selfFirst)
+            {
+                pendingTask = &self;
             }
             if (pendingTask == &self)
             {
                 if (!withDeadline) self.sleep(false);
                 return true;
             }
-            if (pendingTask && pendingTask->suspended())
+            if (pendingTask)
             {
-                if (pendingTask->delayed().load()) { pendingTask->sleep(false); }
-                else { scheduleTask(pendingTask, true); }
+                if (pendingTask->sleeping())
+                {
+                    scheduleTask(pendingTask, true);
+                }
+                else if (pendingTask->delayed().load())
+                {
+                    pendingTask->sleep(false);
+                }
+            }
+            if (stop)
+            {
+                break;
             }
             val -= 1;
+            fwd = val;
         }
-        selfFirst = true;
+        if (valOnEntry)
+        {
+#if !defined(ESP32) && defined(ARDUINO)
+            InterruptLock lock;
+            val = value.load();
+            value.store(val + 1);
+#else
+            while (!value.compare_exchange_weak(val, val + 1)) {}
+#endif
+        }
         if (withDeadline)
         {
 
@@ -159,6 +190,7 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         {
             yield();
         }
+        selfFirst = true;
     }
 }
 
@@ -171,16 +203,24 @@ bool IRAM_ATTR CoopSemaphore::post()
         unsigned val = value.load();
         value.store(val + 1);
         pendingTask = pendingTask0.load();
-        pendingTask0.store(nullptr);
+        if (pendingTask) pendingTask0.store(nullptr);
     }
 #else
     unsigned val = 0;
     while (!value.compare_exchange_weak(val, val + 1)) {}
     pendingTask = pendingTask0.exchange(nullptr);
 #endif
-    if (!pendingTask) return true;
-    if (pendingTask->sleeping()) return scheduleTask(pendingTask, true);
-    pendingTask->sleep(false);
+    if (pendingTask)
+    {
+        if (pendingTask->sleeping())
+        {
+            scheduleTask(pendingTask, true);
+        }
+        else if (pendingTask->delayed().load())
+        {
+            pendingTask->sleep(false);
+        }
+    }
     return true;
 }
 

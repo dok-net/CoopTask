@@ -58,6 +58,8 @@ void setup() {
             for (int i = 0; i < 30; ++i)
             {
                 {
+                    Serial.print(CoopTaskBase::self().name());
+                    Serial.println(" locks mutex");
                     CoopMutexLock lock(mutex);
                     if (!lock) {
                         Serial.print("failed to lock mutex in ");
@@ -80,7 +82,7 @@ void setup() {
 #if defined(ESP8266) || defined(ESP32)
     );
 #else
-    , 0x140);
+    , 0x120);
 #endif
     if (!firstTask) Serial.println("firstTask not scheduled");
     secondTask = scheduleTask("second", []()
@@ -90,6 +92,8 @@ void setup() {
             for (int i = 0; i < 30; ++i)
             {
                 {
+                    Serial.print(CoopTaskBase::self().name());
+                    Serial.println(" locks mutex");
                     CoopMutexLock lock(mutex);
                     if (!lock) {
                         Serial.print("failed to lock mutex in ");
@@ -112,7 +116,7 @@ void setup() {
 #if defined(ESP8266) || defined(ESP32)
     );
 #else
-    , 0x140);
+    , 0x120);
 #endif
     if (!secondTask) Serial.println("secondTask not scheduled");
     thirdTask = scheduleTask("third", []()
@@ -122,6 +126,8 @@ void setup() {
             for (int i = 0; i < 10; ++i)
             {
                 {
+                    Serial.print(CoopTaskBase::self().name());
+                    Serial.println(" locks mutex");
                     CoopMutexLock lock(mutex);
                     if (!lock) {
                         Serial.print("failed to lock mutex in ");
@@ -152,7 +158,7 @@ void setup() {
 #if defined(ESP8266) || defined(ESP32)
     );
 #else
-    , 0x140);
+    , 0x120);
 #endif
     if (!thirdTask) Serial.println("thirdTask not scheduled");
 }
