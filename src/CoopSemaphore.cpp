@@ -85,6 +85,7 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         bool fwd = !selfFirst && val;
         bool stop = false;
         CoopTaskBase* pendingTask = nullptr;
+        bool selfSuccess = false;
         for (;;)
         {
             if (pendingTasks->available())
@@ -126,14 +127,23 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
             }
             if (selfFirst)
             {
-                pendingTask = &self;
-            }
-            if (pendingTask == &self)
-            {
                 if (!withDeadline) self.sleep(false);
-                return true;
+                selfFirst = false;
+                selfSuccess = true;
             }
-            if (pendingTask)
+            else if (pendingTask == &self)
+            {
+                if (selfSuccess)
+                {
+                    if (!stop) continue;
+                }
+                else
+                {
+                    if (!withDeadline) self.sleep(false);
+                    return true;
+                }
+            }
+            else if (pendingTask)
             {
                 if (pendingTask->sleeping())
                 {
@@ -150,6 +160,10 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
             }
             val -= 1;
             fwd = val;
+        }
+        if (selfSuccess)
+        {
+            return true;
         }
         if (valOnEntry)
         {
