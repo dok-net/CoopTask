@@ -26,19 +26,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 class CoopMutex : private CoopSemaphore
 {
 protected:
-    CoopTaskBase* owner = nullptr;
+    std::atomic<CoopTaskBase*> owner;
 
 public:
-    CoopMutex(unsigned maxPending = 10) : CoopSemaphore(1, maxPending) {}
+    CoopMutex(unsigned maxPending = 10) : CoopSemaphore(1, maxPending), owner(nullptr) {}
     CoopMutex(const CoopMutex&) = delete;
     CoopMutex& operator=(const CoopMutex&) = delete;
 
     /// @returns: true, or false, if the current task does not own the mutex.
     bool unlock()
     {
-        if (CoopTaskBase::running() && &CoopTaskBase::self() == owner && post())
+        if (CoopTaskBase::running() && &CoopTaskBase::self() == owner.load() && post())
         {
-            owner = nullptr;
+            owner.store(nullptr);
             return true;
         }
         return false;
@@ -47,9 +47,9 @@ public:
     /// @returns: true if the mutex becomes locked. false if it is already locked by the same task, or the maximum number of pending tasks is exceeded.
     bool lock()
     {
-        if (CoopTaskBase::running() && &CoopTaskBase::self() != owner && wait())
+        if (CoopTaskBase::running() && &CoopTaskBase::self() != owner.load() && wait())
         {
-            owner = &CoopTaskBase::self();
+            owner.store(&CoopTaskBase::self());
             return true;
         }
         return false;
@@ -58,9 +58,9 @@ public:
     /// @returns: true if the mutex becomes freshly locked without waiting, otherwise false.
     bool try_lock()
     {
-        if (CoopTaskBase::running() && &CoopTaskBase::self() != owner && try_wait())
+        if (CoopTaskBase::running() && &CoopTaskBase::self() != owner.load() && try_wait())
         {
-            owner = &CoopTaskBase::self();
+            owner.store(&CoopTaskBase::self());
             return true;
         }
         return false;
