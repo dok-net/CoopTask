@@ -352,18 +352,17 @@ void setup()
         }, 0x800);
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
-#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
     if (!scheduleTask(taskButton)) { Serial.printf("Could not schedule task %s\n", taskButton->name().c_str()); }
-    if (!scheduleTask(taskBlink)) { Serial.printf("Could not schedule task %s\n", taskBlink->name().c_str()); }
-    if (!scheduleTask(taskText)) { Serial.printf("Could not schedule task %s\n", taskText->name().c_str()); }
-    if (!scheduleTask(taskReport0)) { Serial.printf("Could not schedule task %s\n", taskReport0->name().c_str()); }
-    if (!scheduleTask(taskReport1)) { Serial.printf("Could not schedule task %s\n", taskReport1->name().c_str()); }
-    if (!scheduleTask(taskReport2)) { Serial.printf("Could not schedule task %s\n", taskReport2->name().c_str()); }
     if (!scheduleTask(taskReport3)) { Serial.printf("Could not schedule task %s\n", taskReport3->name().c_str()); }
     if (!scheduleTask(taskReport4)) { Serial.printf("Could not schedule task %s\n", taskReport4->name().c_str()); }
     if (!scheduleTask(taskWeb)) { Serial.printf("Could not schedule task %s\n", taskWeb->name().c_str()); }
 #endif
-#endif
+
+    if (!scheduleTask(taskBlink)) { Serial.print("Could not schedule task "); Serial.println(taskBlink->name().c_str()); }
+    if (!scheduleTask(taskText)) { Serial.print("Could not schedule task "); Serial.println(taskText->name().c_str()); }
+    if (!scheduleTask(taskReport0)) { Serial.print("Could not schedule task "); Serial.println(taskReport0->name().c_str()); }
+    if (!scheduleTask(taskReport1)) { Serial.print("Could not schedule task "); Serial.println(taskReport1->name().c_str()); }
+    if (!scheduleTask(taskReport2)) { Serial.print("Could not schedule task "); Serial.println(taskReport2->name().c_str()); }
 
     Serial.println("Scheduler test");
 

@@ -145,14 +145,7 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
             }
             else if (pendingTask)
             {
-                if (pendingTask->sleeping())
-                {
-                    scheduleTask(pendingTask, true);
-                }
-                else if (pendingTask->delayed().load())
-                {
-                    pendingTask->sleep(false);
-                }
+                scheduleTask(pendingTask, true);
             }
             if (stop)
             {
@@ -226,14 +219,7 @@ bool IRAM_ATTR CoopSemaphore::post()
 #endif
     if (pendingTask)
     {
-        if (pendingTask->sleeping())
-        {
-            scheduleTask(pendingTask, true);
-        }
-        else if (pendingTask->delayed().load())
-        {
-            pendingTask->sleep(false);
-        }
+        scheduleTask(pendingTask, true);
     }
     return true;
 }
@@ -258,11 +244,6 @@ bool CoopSemaphore::setval(unsigned newVal)
     if (newVal > val) pendingTask = pendingTask0.exchange(nullptr);
 #endif
     if (!pendingTask || !pendingTask->suspended()) return true;
-    if (pendingTask->delayed().load())
-    {
-        pendingTask->sleep(false);
-        return true;
-    }
     return scheduleTask(pendingTask, true);
 }
 

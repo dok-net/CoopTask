@@ -6,6 +6,7 @@
 #include <iostream>
 #include "CoopTask.h"
 #include "CoopSemaphore.h"
+#include "CoopMutex.h"
 
 void printStackReport(BasicCoopTask<>& task)
 {
@@ -13,18 +14,23 @@ void printStackReport(BasicCoopTask<>& task)
     std::cerr << task.name().c_str() << " free stack = " << task.getFreeStack() << std::endl;
 }
 
+CoopMutex blinkMutex;
+
 int main()
 {
     CoopSemaphore terminatorSema(0);
     CoopSemaphore helloSema(0);
 
-    CoopTask<> hello(std::string("hello"), [&terminatorSema, &helloSema]() noexcept
+    auto& hello = *scheduleTask(std::string("hello"), [&terminatorSema, &helloSema]() noexcept
         {
             std::cerr << "Hello" << std::endl;
             yield();
             for (int x = 0; x < 10; ++x)
             {
-                std::cerr << "Loop" << std::endl;
+                {
+                    CoopMutexLock lock(blinkMutex);
+                    std::cerr << "Loop" << std::endl;
+                }
                 helloSema.wait(2000);
             }
             terminatorSema.post();
@@ -35,7 +41,7 @@ int main()
 
     bool keepBlinking = true;
 
-    CoopTask<> terminator(std::string("terminator"), [&keepBlinking, &terminatorSema]() noexcept
+    auto& terminator = *scheduleTask(std::string("terminator"), [&keepBlinking, &terminatorSema]() noexcept
         {
             if (!terminatorSema.wait()) std::cerr << "terminatorSema.wait() failed" << std::endl;
             keepBlinking = false;
@@ -43,13 +49,16 @@ int main()
         }, 0x2000);
     if (!terminator) std::cerr << terminator.name() << " CoopTask not created" << std::endl;
 
-    CoopTask<std::string> blink(std::string("blink"), [&keepBlinking]()
+    auto& blink = *scheduleTask<std::string>(std::string("blink"), [&keepBlinking]()
         {
             while (keepBlinking)
             {
-                std::cerr << "LED on" << std::endl;
-                delay(1000);
-                std::cerr << "LED off" << std::endl;
+                {
+                    CoopMutexLock lock(blinkMutex);
+                    std::cerr << "LED on" << std::endl;
+                    delay(1000);
+                    std::cerr << "LED off" << std::endl;
+                }
                 delay(1000);
             }
             throw std::string("sixtynine");
@@ -57,12 +66,15 @@ int main()
         }, 0x2000);
     if (!blink) std::cerr << blink.name() << " CoopTask not created" << std::endl;
 
-    CoopTask<> report(std::string("report"), [&hello, &blink]() noexcept
+    auto& report = *scheduleTask(std::string("report"), [&hello, &blink]() noexcept
         {
             for (;;) {
                 delay(5000);
-                printStackReport(hello);
-                printStackReport(blink);
+                {
+                    CoopMutexLock lock(blinkMutex);
+                    printStackReport(hello);
+                    printStackReport(blink);
+                }
             }
             return 0;
         }, 0x2000);

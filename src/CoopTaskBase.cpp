@@ -367,12 +367,15 @@ bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us)
 bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup)
 {
     if (!*task) return false;
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
+    bool reschedule = task->sleeping();
+#endif
     if (wakeup)
     {
         task->sleep(false);
     }
 #if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
-    return schedule_function([task]() { rescheduleTask(task, 1); });
+    return !reschedule || schedule_function([task]() { rescheduleTask(task, 1); });
 #else
     return true;
 #endif

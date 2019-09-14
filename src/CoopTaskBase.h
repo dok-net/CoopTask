@@ -107,7 +107,7 @@ protected:
 #else
     CoopTaskBase(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
-        taskName(name), taskStackSize(stackSize), delays(false), sleeps(false), func(_func)
+        taskName(name), taskStackSize(stackSize), delays(false), sleeps(true), func(_func)
     {
     }
     CoopTaskBase(const CoopTaskBase&) = delete;
@@ -208,6 +208,8 @@ public:
     /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
     static CoopTaskBase& self() noexcept { return *current; }
 
+	/// @returns: true if the task's is set to sleep.
+	/// For a non-running task, this implies it is also currently not scheduled.
     inline bool IRAM_ATTR sleeping() const noexcept __attribute__((always_inline)) { return sleeps.load(); }
     inline const std::atomic<bool>& IRAM_ATTR delayed() const noexcept __attribute__((always_inline)) { return delays; }
     inline bool IRAM_ATTR suspended() const noexcept __attribute__((always_inline)) { return sleeps.load() || delays.load(); }
@@ -230,9 +232,9 @@ public:
 bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us);
 #endif
 
-/// Add the task to the scheduler, optionally waking up the task first.
+/// Add the task to the scheduler, by default waking up the task from sleep and delay.
 /// @returns: true on success.
-bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup = false);
+bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup = true);
 
 // TODO: temporary hack until delay() hook is available on ESP32
 #if defined(ESP32)
