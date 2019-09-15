@@ -93,7 +93,6 @@ Button* button1;
 
 int loopButton() noexcept
 {
-    int preCount = 0;
     int count = 0;
     for (;;)
     {
