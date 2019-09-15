@@ -23,17 +23,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef ARDUINO
 #include <Arduino.h>
 #endif
+
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 #include <atomic>
 #include <memory>
 #include <algorithm>
 #include <functional>
+using std::min;
+#else
+#include "ghostl.h"
+#endif
 
 #if !defined(ESP32) && !defined(ESP8266)
 #define ICACHE_RAM_ATTR
 #define IRAM_ATTR
 #endif
-
-using std::min;
 
 /*!
     @brief	Instance class for a single-producer, single-consumer circular queue / ring buffer (FIFO).
@@ -169,6 +173,7 @@ public:
         return push(T(val));
     }
 
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     /*!
         @brief	Push copies of multiple elements from a buffer into the queue,
                 in order, beginning at buffer's head.
@@ -176,6 +181,7 @@ public:
                 from the buffer head.
     */
     size_t push_n(const T* buffer, size_t size);
+#endif
 
     /*!
         @brief	Pop the next available element from the queue.
@@ -184,6 +190,7 @@ public:
     */
     T pop();
 
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     /*!
         @brief	Pop multiple elements in ordered sequence from the queue to a buffer.
                 If buffer is nullptr, simply discards up to size elements from the queue.
@@ -191,12 +198,17 @@ public:
                 buffer.
     */
     size_t pop_n(T* buffer, size_t size);
+#endif
 
     /*!
         @brief	Iterate over and remove each available element from queue,
                 calling back fun with an rvalue reference of every single element.
     */
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     void for_each(const std::function<void(T&&)>& fun);
+#else
+    void for_each(std::function<void(T&&)> fun);
+#endif
 
     /*!
         @brief	In reverse order, iterate over, pop and optionally requeue each available element from the queue,
@@ -204,12 +216,20 @@ public:
                 Requeuing is dependent on the return boolean of the callback function. If it
                 returns true, the requeue occurs.
     */
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     bool for_each_rev_requeue(const std::function<bool(T&)>& fun);
+#else
+    bool for_each_rev_requeue(std::function<bool(T&)> fun);
+#endif
 
 protected:
     const T defaultValue = {};
     unsigned m_bufSize;
-    std::unique_ptr<T[] > m_buffer;
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+    std::unique_ptr<T[]> m_buffer;
+#else
+    std::unique_ptr<T> m_buffer;
+#endif
     std::atomic<unsigned> m_inPos;
     std::atomic<unsigned> m_outPos;
 };
@@ -263,6 +283,7 @@ bool IRAM_ATTR circular_queue<T>::push(T&& val)
     return true;
 }
 
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 template< typename T >
 size_t circular_queue<T>::push_n(const T* buffer, size_t size)
 {
@@ -288,6 +309,7 @@ size_t circular_queue<T>::push_n(const T* buffer, size_t size)
     m_inPos.store(next, std::memory_order_release);
     return blockSize + size;
 }
+#endif
 
 template< typename T >
 T circular_queue<T>::pop()
@@ -305,6 +327,7 @@ T circular_queue<T>::pop()
     return val;
 }
 
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 template< typename T >
 size_t circular_queue<T>::pop_n(T* buffer, size_t size) {
     size_t avail = size = min(size, available());
@@ -325,9 +348,14 @@ size_t circular_queue<T>::pop_n(T* buffer, size_t size) {
     m_outPos.store((outPos + size) % m_bufSize, std::memory_order_release);
     return size;
 }
+#endif
 
 template< typename T >
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 void circular_queue<T>::for_each(const std::function<void(T&&)>& fun)
+#else
+void circular_queue<T>::for_each(std::function<void(T&&)> fun)
+#endif
 {
     auto outPos = m_outPos.load(std::memory_order_acquire);
     const auto inPos = m_inPos.load(std::memory_order_relaxed);
@@ -342,7 +370,11 @@ void circular_queue<T>::for_each(const std::function<void(T&&)>& fun)
 }
 
 template< typename T >
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 bool circular_queue<T>::for_each_rev_requeue(const std::function<bool(T&)>& fun)
+#else
+bool circular_queue<T>::for_each_rev_requeue(std::function<bool(T&)> fun)
+#endif
 {
     auto inPos0 = circular_queue<T>::m_inPos.load(std::memory_order_acquire);
     auto outPos = circular_queue<T>::m_outPos.load(std::memory_order_relaxed);

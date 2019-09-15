@@ -38,50 +38,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 #endif
 
-#if defined(ESP8266)
-#include <atomic>
-#elif defined(ESP32) || !defined(ARDUINO)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 #include <atomic>
 #else
-#include <util/atomic.h>
-
-namespace std
-{
-    template< typename T > class unique_ptr
-    {
-    public:
-        using pointer = T *;
-        unique_ptr() noexcept : ptr(nullptr) {}
-        unique_ptr(pointer p) : ptr(p) {}
-        pointer operator->() const noexcept { return ptr; }
-        T& operator[](size_t i) const { return ptr[i]; }
-        void reset(pointer p = pointer()) noexcept
-        {
-            delete ptr;
-            ptr = p;
-        }
-        T& operator*() const { return *ptr; }
-    private:
-        pointer ptr;
-    };
-
-    typedef enum memory_order {
-        memory_order_relaxed,
-        memory_order_acquire,
-        memory_order_release,
-        memory_order_seq_cst
-    } memory_order;
-    template< typename T > class atomic {
-    private:
-        T value;
-    public:
-        atomic() {}
-        atomic(T desired) { value = desired; }
-        void store(T desired, std::memory_order = std::memory_order_seq_cst) volatile noexcept { value = desired; }
-        T load(std::memory_order = std::memory_order_seq_cst) const volatile noexcept { return value; }
-    };
-    template< typename T >	T&& move(T& t) noexcept { return static_cast<T&&>(t); }
-}
+#include "circular_queue/ghostl.h"
 #endif
 
 #if !defined(ESP32) && !defined(ESP8266)
@@ -96,11 +56,7 @@ namespace std
 class CoopTaskBase
 {
 protected:
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     using taskfunction_t = std::function< void() noexcept >;
-#else
-    using taskfunction_t = void(*)() noexcept;
-#endif
 
 #ifdef ARDUINO
     CoopTaskBase(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
