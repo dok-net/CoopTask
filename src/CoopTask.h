@@ -93,8 +93,8 @@ public:
 };
 
 /// A convenience function that creates a matching CoopTask for the supplied task function, with the
-/// given name and stack size, and adds it to the scheduler.
-/// @returns: the pointer to the new CoopTask instance, or null if the creation or scheduling failed.
+/// given name and stack size, and makes it ready for scheduling.
+/// @returns: the pointer to the new CoopTask instance, or null if the creation or preparing for scheduling failed.
 template<typename Result = int> CoopTask<Result> * scheduleTask(
 #if defined(ARDUINO)
     const String & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
@@ -103,7 +103,7 @@ const std::string & name, typename CoopTask<Result>::taskfunction_t func, uint32
 #endif
 {
     auto task = new CoopTask<Result>(name, func, stackSize);
-    if (task && scheduleTask(task)) return task;
+    if (task && task->scheduleTask()) return task;
     delete task;
     return nullptr;
 }

@@ -108,6 +108,10 @@ protected:
     int32_t initialize();
     void doYield(uint32_t val) noexcept;
 
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
+    bool rescheduleTask(uint32_t repeat_us);
+#endif
+
     void _exit() noexcept;
     void _yield() noexcept;
     void _sleep() noexcept;
@@ -144,6 +148,10 @@ public:
     operator bool() noexcept { return cont; }
 #endif
 
+    /// Ready the task for scheduling, by default waking up the task from both sleep and delay.
+    /// @returns: true on success.
+    bool IRAM_ATTR scheduleTask(bool wakeup = true);
+
     /// @returns: -1: exited. 0: runnable or sleeping. >0: delayed for milliseconds or microseconds, check delayIsMs().
     int32_t run();
 
@@ -164,8 +172,8 @@ public:
     /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
     static CoopTaskBase& self() noexcept { return *current; }
 
-	/// @returns: true if the task's is set to sleep.
-	/// For a non-running task, this implies it is also currently not scheduled.
+    /// @returns: true if the task's is set to sleep.
+    /// For a non-running task, this implies it is also currently not scheduled.
     inline bool IRAM_ATTR sleeping() const noexcept __attribute__((always_inline)) { return sleeps.load(); }
     inline const std::atomic<bool>& IRAM_ATTR delayed() const noexcept __attribute__((always_inline)) { return delays; }
     inline bool IRAM_ATTR suspended() const noexcept __attribute__((always_inline)) { return sleeps.load() || delays.load(); }
@@ -183,14 +191,6 @@ public:
     /// use only in running CoopTask function.
     static void delayMicroseconds(uint32_t us) noexcept { self()._delayMicroseconds(us); }
 };
-
-#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
-bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us);
-#endif
-
-/// Add the task to the scheduler, by default waking up the task from sleep and delay.
-/// @returns: true on success.
-bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup = true);
 
 // TODO: temporary hack until delay() hook is available on ESP32
 #if defined(ESP32)

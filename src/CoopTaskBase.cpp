@@ -88,6 +88,52 @@ namespace
 }
 #endif
 
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
+bool CoopTaskBase::rescheduleTask(uint32_t repeat_us)
+{
+    auto stat = run();
+    if (sleeping()) return false;
+    switch (stat)
+    {
+    case -1: // exited.
+        return false;
+        break;
+    case 0: // runnable.
+        // rather keep scheduling at wrong delayed interval than drop altogether
+        if (repeat_us)
+        {
+            return !schedule_recurrent_function_us([this]() { return rescheduleTask(0); }, 0);
+        }
+        break;
+    default: // delayed for stat milliseconds or microseconds, check delayIsMs().
+        uint32_t next_repeat_us = delayIsMs() ? stat * 1000 : stat;
+        if (next_repeat_us > 26000000) next_repeat_us = 26000000;
+        if (next_repeat_us == repeat_us) break;
+        // rather keep scheduling at wrong interval than drop altogether
+        return !schedule_recurrent_function_us([this, next_repeat_us]() { return rescheduleTask(next_repeat_us); }, next_repeat_us, &delayed());
+        break;
+    }
+    return true;
+}
+#endif
+
+bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
+{
+    if (!*this) return false;
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
+    bool reschedule = sleeping();
+#endif
+    if (wakeup)
+    {
+        sleep(false);
+    }
+#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
+    return !reschedule || schedule_function([this]() { rescheduleTask(1); });
+#else
+    return true;
+#endif
+}
+
 #ifndef _MSC_VER
 
 int32_t CoopTaskBase::initialize()
@@ -333,50 +379,4 @@ void CoopTaskBase::_delayMicroseconds(uint32_t us) noexcept
     delay_duration = us;
     // CoopTask::run() defers task for delay_duration microseconds.
     doYield(3);
-}
-
-#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
-bool rescheduleTask(CoopTaskBase* task, uint32_t repeat_us)
-{
-    auto stat = task->run();
-    if (task->sleeping()) return false;
-    switch (stat)
-    {
-    case -1: // exited.
-        return false;
-        break;
-    case 0: // runnable.
-        // rather keep scheduling at wrong delayed interval than drop altogether
-        if (repeat_us)
-        {
-            return !schedule_recurrent_function_us([task]() { return rescheduleTask(task, 0); }, 0);
-        }
-        break;
-    default: // delayed for stat milliseconds or microseconds, check delayIsMs().
-        uint32_t next_repeat_us = task->delayIsMs() ? stat * 1000 : stat;
-        if (next_repeat_us > 26000000) next_repeat_us = 26000000;
-        if (next_repeat_us == repeat_us) break;
-        // rather keep scheduling at wrong interval than drop altogether
-        return !schedule_recurrent_function_us([task, next_repeat_us]() { return rescheduleTask(task, next_repeat_us); }, next_repeat_us, &task->delayed());
-        break;
-    }
-    return true;
-}
-#endif
-
-bool IRAM_ATTR scheduleTask(CoopTaskBase* task, bool wakeup)
-{
-    if (!*task) return false;
-#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
-    bool reschedule = task->sleeping();
-#endif
-    if (wakeup)
-    {
-        task->sleep(false);
-    }
-#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
-    return !reschedule || schedule_function([task]() { rescheduleTask(task, 1); });
-#else
-    return true;
-#endif
 }

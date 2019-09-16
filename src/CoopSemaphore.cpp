@@ -145,7 +145,7 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
             }
             else if (pendingTask)
             {
-                scheduleTask(pendingTask, true);
+                pendingTask->scheduleTask(true);
             }
             if (stop)
             {
@@ -219,7 +219,7 @@ bool IRAM_ATTR CoopSemaphore::post()
 #endif
     if (pendingTask)
     {
-        scheduleTask(pendingTask, true);
+        pendingTask->scheduleTask(true);
     }
     return true;
 }
@@ -244,7 +244,7 @@ bool CoopSemaphore::setval(unsigned newVal)
     if (newVal > val) pendingTask = pendingTask0.exchange(nullptr);
 #endif
     if (!pendingTask || !pendingTask->suspended()) return true;
-    return scheduleTask(pendingTask, true);
+    return pendingTask->scheduleTask(true);
 }
 
 bool CoopSemaphore::try_wait()

@@ -351,17 +351,17 @@ void setup()
         }, 0x800);
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
-    if (!scheduleTask(taskButton)) { Serial.printf("Could not schedule task %s\n", taskButton->name().c_str()); }
-    if (!scheduleTask(taskReport3)) { Serial.printf("Could not schedule task %s\n", taskReport3->name().c_str()); }
-    if (!scheduleTask(taskReport4)) { Serial.printf("Could not schedule task %s\n", taskReport4->name().c_str()); }
-    if (!scheduleTask(taskWeb)) { Serial.printf("Could not schedule task %s\n", taskWeb->name().c_str()); }
+    if (!taskButton->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskButton->name().c_str()); }
+    if (!taskReport3->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskReport3->name().c_str()); }
+    if (!taskReport4->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskReport4->name().c_str()); }
+    if (!taskWeb->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskWeb->name().c_str()); }
 #endif
 
-    if (!scheduleTask(taskBlink)) { Serial.print("Could not schedule task "); Serial.println(taskBlink->name().c_str()); }
-    if (!scheduleTask(taskText)) { Serial.print("Could not schedule task "); Serial.println(taskText->name().c_str()); }
-    if (!scheduleTask(taskReport0)) { Serial.print("Could not schedule task "); Serial.println(taskReport0->name().c_str()); }
-    if (!scheduleTask(taskReport1)) { Serial.print("Could not schedule task "); Serial.println(taskReport1->name().c_str()); }
-    if (!scheduleTask(taskReport2)) { Serial.print("Could not schedule task "); Serial.println(taskReport2->name().c_str()); }
+    if (!taskBlink->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskBlink->name().c_str()); }
+    if (!taskText->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskText->name().c_str()); }
+    if (!taskReport0->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport0->name().c_str()); }
+    if (!taskReport1->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport1->name().c_str()); }
+    if (!taskReport2->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport2->name().c_str()); }
 
     Serial.println("Scheduler test");
 

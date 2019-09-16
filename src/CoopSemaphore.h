@@ -58,7 +58,7 @@ public:
         // wake up all queued tasks
         pendingTasks->for_each([](CoopTaskBase*&& task)
             {
-                scheduleTask(task, true);
+                task->scheduleTask(true);
             });
         pendingTasks.reset();
     }
