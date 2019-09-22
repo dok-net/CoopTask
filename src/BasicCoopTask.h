@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 class CoopTaskStackAllocator
 {
 public:
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(ESP32)
     static char* allocateStack(uint32_t stackSize);
     static void disposeStack(char* stackTop) { delete[] stackTop; }
 #endif
@@ -43,7 +43,7 @@ public:
 #endif
         CoopTaskBase(name, _func, stackSize)
     {
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(ESP32)
         taskStackTop = stackAllocator.allocateStack(stackSize);
 #endif
     }
@@ -51,7 +51,7 @@ public:
     BasicCoopTask& operator=(const BasicCoopTask&) = delete;
     ~BasicCoopTask()
     {
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(ESP32)
         stackAllocator.disposeStack(taskStackTop);
 #endif
     }

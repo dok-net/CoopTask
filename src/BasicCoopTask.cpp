@@ -19,14 +19,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "BasicCoopTask.h"
 
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(ESP32)
 
 char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
 {
     char* stackTop = nullptr;
     if (stackSize <= CoopTaskBase::MAXSTACKSPACE - 2 * sizeof(CoopTaskBase::STACKCOOKIE))
     {
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266)
         stackTop = new (std::nothrow) char[stackSize + 2 * sizeof(CoopTaskBase::STACKCOOKIE)];
 #else
         stackTop = new char[stackSize + 2 * sizeof(CoopTaskBase::STACKCOOKIE)];
@@ -35,4 +35,4 @@ char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
     return stackTop;
 }
 
-#endif // _MSC_VER
+#endif // !defined(_MSC_VER) && !defined(ESP32)

@@ -255,7 +255,7 @@ void setup()
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
-    taskText = new CoopTask<uint32_t>(F("Text"), []()
+    taskText = new CoopTask<uint32_t>(F("Text"), []() -> uint32_t
         {
             RAIITest raii;
             Serial.println("Task1 - A");
@@ -266,11 +266,11 @@ void setup()
             Serial.print("!!!Task1 - C - ");
             Serial.println(millis() - start);
             printStackReport(taskText);
-#if defined(ESP32) || !defined(ARDUINO)
-            throw (uint32_t)41L;
+#if !defined(ARDUINO)
+            throw static_cast<uint32_t>(41);
 #endif
             //CoopTask<uint32_t>::exit(42);
-            return (uint32_t)43L;
+            return 43;
         }
 #if defined(ESP8266) || defined(ESP32)
     , 0x380);
@@ -351,6 +351,13 @@ void setup()
         }, 0x800);
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
+    Serial.println("Scheduler test");
+
+    Serial.print("Loop free stack = "); Serial.println(uxTaskGetStackHighWaterMark(NULL));
+
+    reportCnt = 0;
+    start = micros();
+
     if (!taskButton->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskButton->name().c_str()); }
     if (!taskReport3->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskReport3->name().c_str()); }
     if (!taskReport4->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskReport4->name().c_str()); }
@@ -362,11 +369,6 @@ void setup()
     if (!taskReport0->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport0->name().c_str()); }
     if (!taskReport1->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport1->name().c_str()); }
     if (!taskReport2->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport2->name().c_str()); }
-
-    Serial.println("Scheduler test");
-
-    reportCnt = 0;
-    start = micros();
 }
 
 #if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)

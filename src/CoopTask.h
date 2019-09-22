@@ -46,19 +46,22 @@ protected:
 
     static void captureFuncReturn() noexcept
     {
-#if defined(ESP32) || !defined(ARDUINO)
+#if !defined(ARDUINO)
         try {
 #endif
             self()._exitCode = self().func();
-#if defined(ESP32) || !defined(ARDUINO)
+#if !defined(ARDUINO)
         }
-        catch (Result code)
+        catch (const Result code)
         {
             self()._exitCode = code;
         }
+        catch (...)
+        {
+        }
 #endif
     }
-    void _exit(Result&& code = Result()) noexcept
+    void _exit(Result&& code = Result{}) noexcept
     {
         _exitCode = std::move(code);
         BasicCoopTask<StackAllocator>::_exit();
@@ -83,7 +86,7 @@ public:
     /// by exit(), which among other issues breaks the RAII idiom,
     /// using regular return or exceptions is to be preferred in most cases.
     /// @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
-    static void exit(Result&& code = Result()) noexcept { self()._exit(std::move(code)); }
+    static void exit(Result&& code = Result{}) noexcept { self()._exit(std::move(code)); }
 
     /// Use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,

@@ -63,15 +63,17 @@ protected:
 #else
     CoopTaskBase(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
-        taskName(name), taskStackSize(stackSize), delays(false), sleeps(true), func(_func)
+        taskName(name), taskStackSize(stackSize), sleeps(true), delays(false), func(_func)
     {
     }
     CoopTaskBase(const CoopTaskBase&) = delete;
     CoopTaskBase& operator=(const CoopTaskBase&) = delete;
     ~CoopTaskBase()
     {
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
         if (taskFiber) DeleteFiber(taskFiber);
+#elif defined(ESP32)
+        if (taskHandle) vTaskDelete(taskHandle);
 #endif
     }
 
@@ -84,31 +86,36 @@ protected:
 #endif
 
     uint32_t taskStackSize;
-#ifndef _MSC_VER
-    char* taskStackTop = nullptr;
-    jmp_buf env;
-    jmp_buf env_yield;
-#else
+#if defined(_MSC_VER)
     static LPVOID primaryFiber;
     LPVOID taskFiber = nullptr;
     int val = 0;
-    static void __stdcall taskFiberFunc(void*);
+    static void __stdcall taskFiberFunc(void* self);
+    static CoopTaskBase* current;
+#elif defined(ESP32)
+    TaskHandle_t taskHandle = nullptr;
+    static void taskFunc(void* _self);
+    static bool tlsInitialized;
+#else
+    char* taskStackTop = nullptr;
+    jmp_buf env;
+    jmp_buf env_yield;
+    static CoopTaskBase* current;
 #endif
+    bool init = false;
+    bool cont = true;
+    std::atomic<bool> sleeps;
+    // ESP32 FreeRTOS handles delays, on this platfrom delays is always false
+    std::atomic<bool> delays;
     // true: delay_start/delay_duration are in milliseconds; false: delay_start/delay_duration are in microseconds.
     bool delay_ms = false;
     uint32_t delay_start = 0;
     uint32_t delay_duration = 0;
-    bool init = false;
-    bool cont = true;
-    std::atomic<bool> delays;
-    std::atomic<bool> sleeps;
-
-    static CoopTaskBase* current;
 
     int32_t initialize();
     void doYield(uint32_t val) noexcept;
 
-#if defined(ESP8266) // TODO: requires some PR to be merged: || defined(ESP32)
+#if defined(ESP8266)
     bool rescheduleTask(uint32_t repeat_us);
 #endif
 
@@ -142,7 +149,7 @@ public:
 
     /// @returns: true if the CoopTask object is ready to run, including stack allocation.
     ///           false if either initialization has failed, or the task has exited().
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(ESP32)
     operator bool() noexcept { return cont && taskStackTop; }
 #else
     operator bool() noexcept { return cont; }
@@ -166,11 +173,17 @@ public:
     /// false: clears the sleeping and delay state of the task.
     void IRAM_ATTR sleep(const bool state) noexcept;
 
+#ifdef ESP32
+    /// @returns: true if called from the task function of a CoopTask, false otherwise.
+    static bool running() noexcept;
+    /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+    static CoopTaskBase& self() noexcept;
+#else
     /// @returns: true if called from the task function of a CoopTask, false otherwise.
     static bool running() noexcept { return current; }
-
     /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
     static CoopTaskBase& self() noexcept { return *current; }
+#endif
 
     /// @returns: true if the task's is set to sleep.
     /// For a non-running task, this implies it is also currently not scheduled.
@@ -191,18 +204,6 @@ public:
     /// use only in running CoopTask function.
     static void delayMicroseconds(uint32_t us) noexcept { self()._delayMicroseconds(us); }
 };
-
-// TODO: temporary hack until delay() hook is available on ESP32
-#if defined(ESP32)
-#define yield() { \
-    if (CoopTaskBase::running()) CoopTaskBase::yield(); \
-    else ::yield(); \
-}
-#define delay(m) { \
-    if (CoopTaskBase::running()) CoopTaskBase::delay(m); \
-    else ::delay(m); \
-}
-#endif
 
 #ifndef ARDUINO
 inline void yield() { CoopTaskBase::yield(); }
