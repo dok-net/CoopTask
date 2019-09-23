@@ -183,7 +183,7 @@ void printReport()
 #endif
     printStackReport(taskBlink);
     printStackReport(taskText);
-    printStackReport(&CoopTask<>::self());
+    printStackReport(CoopTask<>::self());
 #if defined(ESP8266) || defined(ESP32)
     printStackReport(taskWeb);
 #endif
@@ -197,7 +197,7 @@ class RAIITest
 public:
     ~RAIITest()
     {
-        Serial.print(CoopTaskBase::self().name());
+        Serial.print(CoopTaskBase::self()->name());
         Serial.println(" stack unwound, RAIITest object destructed");
     }
 };
@@ -285,12 +285,12 @@ void setup()
         for (;;) {
             if (!reportSema.wait(120000))
             {
-                Serial.print(CoopTaskBase::self().name().c_str());
+                Serial.print(CoopTaskBase::self()->name().c_str());
                 Serial.println(": wait failed");
                 yield();
                 continue;
             }
-            Serial.print(CoopTask<>::self().name());
+            Serial.print(CoopTask<>::self()->name());
             Serial.print(" (");
             Serial.print(++count);
             Serial.println("x)");
@@ -353,7 +353,9 @@ void setup()
 
     Serial.println("Scheduler test");
 
+#ifdef ESP32
     Serial.print("Loop free stack = "); Serial.println(uxTaskGetStackHighWaterMark(NULL));
+#endif
 
     reportCnt = 0;
     start = micros();
@@ -372,7 +374,7 @@ void setup()
 }
 
 #if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP32)
 int32_t taskButtonRunnable = 0;
 #endif
 int32_t taskBlinkRunnable = 0;
@@ -380,7 +382,7 @@ int32_t taskTextRunnable = 0;
 int32_t taskReportRunnable0 = 0;
 int32_t taskReportRunnable1 = 0;
 int32_t taskReportRunnable2 = 0;
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP32)
 int32_t taskReportRunnable3 = 0;
 int32_t taskReportRunnable4 = 0;
 int32_t taskWebRunnable = 0;
@@ -402,8 +404,8 @@ template<typename T> void runTask(int32_t& runnable, CoopTask<T>* task)
 
 void loop()
 {
-#if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)
-#if defined(ESP8266) || defined(ESP32)
+#if !defined(ESP8266)
+#if defined(ESP32)
     runTask(taskButtonRunnable, taskButton);
 #endif
     runTask(taskBlinkRunnable, taskBlink);
@@ -411,7 +413,7 @@ void loop()
     runTask(taskReportRunnable0, taskReport0);
     runTask(taskReportRunnable1, taskReport1);
     runTask(taskReportRunnable2, taskReport2);
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP32)
     runTask(taskReportRunnable3, taskReport3);
     runTask(taskReportRunnable4, taskReport4);
     runTask(taskWebRunnable, taskWeb);

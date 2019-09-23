@@ -49,12 +49,12 @@ protected:
 #if !defined(ARDUINO)
         try {
 #endif
-            self()._exitCode = self().func();
+            self()->_exitCode = self()->func();
 #if !defined(ARDUINO)
         }
         catch (const Result code)
         {
-            self()._exitCode = code;
+            self()->_exitCode = code;
         }
         catch (...)
         {
@@ -80,19 +80,19 @@ public:
     Result exitCode() const noexcept { return _exitCode; }
 
     /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-    static CoopTask& self() noexcept { return static_cast<CoopTask&>(BasicCoopTask<StackAllocator>::self()); }
+    static CoopTask* self() noexcept { return static_cast<CoopTask*>(BasicCoopTask<StackAllocator>::self()); }
 
     /// Use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
     /// using regular return or exceptions is to be preferred in most cases.
     /// @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
-    static void exit(Result&& code = Result{}) noexcept { self()._exit(std::move(code)); }
+    static void exit(Result&& code = Result{}) noexcept { self()->_exit(std::move(code)); }
 
     /// Use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
     /// using regular return or exceptions is to be preferred in most cases.
     /// @param code default exit code is default value of CoopTask<>'s template argument, use exit() to set a different value.
-    static void exit(const Result& code) noexcept { self()._exit(code); }
+    static void exit(const Result& code) noexcept { self()->_exit(code); }
 };
 
 /// A convenience function that creates a matching CoopTask for the supplied task function, with the

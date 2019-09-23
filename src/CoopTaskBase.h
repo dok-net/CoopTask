@@ -91,17 +91,15 @@ protected:
     LPVOID taskFiber = nullptr;
     int val = 0;
     static void __stdcall taskFiberFunc(void* self);
-    static CoopTaskBase* current;
 #elif defined(ESP32)
     TaskHandle_t taskHandle = nullptr;
     static void taskFunc(void* _self);
-    static bool tlsInitialized;
 #else
     char* taskStackTop = nullptr;
     jmp_buf env;
     jmp_buf env_yield;
-    static CoopTaskBase* current;
 #endif
+    static CoopTaskBase* current;
     bool init = false;
     bool cont = true;
     std::atomic<bool> sleeps;
@@ -174,16 +172,14 @@ public:
     void IRAM_ATTR sleep(const bool state) noexcept;
 
 #ifdef ESP32
-    /// @returns: true if called from the task function of a CoopTask, false otherwise.
-    static bool running() noexcept;
-    /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-    static CoopTaskBase& self() noexcept;
+    /// @returns: a pointer to the CoopTask instance that is running. nullptr if not called from a CoopTask function (running() == false).
+    static CoopTaskBase* self() noexcept;
 #else
-    /// @returns: true if called from the task function of a CoopTask, false otherwise.
-    static bool running() noexcept { return current; }
-    /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
-    static CoopTaskBase& self() noexcept { return *current; }
+    /// @returns: a pointer to the CoopTask instance that is running. nullptr if not called from a CoopTask function (running() == false).
+    static CoopTaskBase* self() noexcept { return current; }
 #endif
+	/// @returns: true if called from the task function of a CoopTask, false otherwise.
+	static bool running() noexcept { return self(); }
 
     /// @returns: true if the task's is set to sleep.
     /// For a non-running task, this implies it is also currently not scheduled.
@@ -194,15 +190,17 @@ public:
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
     /// using regular return or exceptions is to be preferred in most cases.
-    static void exit() noexcept { self()._exit(); }
+    static void exit() noexcept { self()->_exit(); }
     /// use only in running CoopTask function.
-    static void yield() noexcept { self()._yield(); }
+    static void yield() noexcept { self()->_yield(); }
+    static void yield(CoopTaskBase* self) noexcept { self->_yield(); }
     /// use only in running CoopTask function.
-    static void sleep() noexcept { self()._sleep(); }
+    static void sleep() noexcept { self()->_sleep(); }
     /// use only in running CoopTask function.
-    static void delay(uint32_t ms) noexcept { self()._delay(ms); }
+    static void delay(uint32_t ms) noexcept { self()->_delay(ms); }
+    static void delay(CoopTaskBase* self, uint32_t ms) noexcept { self->_delay(ms); }
     /// use only in running CoopTask function.
-    static void delayMicroseconds(uint32_t us) noexcept { self()._delayMicroseconds(us); }
+    static void delayMicroseconds(uint32_t us) noexcept { self()->_delayMicroseconds(us); }
 };
 
 #ifndef ARDUINO

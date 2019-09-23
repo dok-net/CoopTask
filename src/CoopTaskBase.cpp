@@ -35,13 +35,15 @@ extern "C" {
 
     void yield()
     {
-        if (CoopTaskBase::running()) CoopTaskBase::yield();
+        auto self = CoopTaskBase::self();
+        if (self) CoopTaskBase::yield(self);
         else __yield();
     }
 #elif defined(ARDUINO)
     void yield()
     {
-        if (CoopTaskBase::running()) CoopTaskBase::yield();
+        auto self = CoopTaskBase::self();
+        if (self) CoopTaskBase::yield(self);
     }
 #endif
 #if defined(ESP8266)
@@ -49,18 +51,14 @@ extern "C" {
 
     void delay(unsigned long ms)
     {
-        if (CoopTaskBase::running()) CoopTaskBase::delay(ms);
+        auto self = CoopTaskBase::self();
+        if (self) CoopTaskBase::delay(self, ms);
         else __delay(ms);
     }
 #endif
 }
 
-#ifdef ESP32
-constexpr uint32_t ThreadLocalStorageIdx = 0;
-bool CoopTaskBase::tlsInitialized = false;
-#else
 CoopTaskBase* CoopTaskBase::current = nullptr;
-#endif
 
 #ifndef ARDUINO
 namespace
@@ -214,7 +212,7 @@ uint32_t CoopTaskBase::getFreeStack()
 
 void CoopTaskBase::doYield(uint32_t val) noexcept
 {
-    self().val = val;
+    self()->val = val;
     SwitchToFiber(primaryFiber);
 }
 
@@ -242,7 +240,7 @@ void CoopTaskBase::_delayMicroseconds(uint32_t us) noexcept
 
 void CoopTaskBase::_exit() noexcept
 {
-    self().val = -1;
+    self()->val = -1;
     SwitchToFiber(primaryFiber);
 }
 
@@ -270,7 +268,6 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 
 void CoopTaskBase::taskFunc(void* _self)
 {
-    vTaskSetThreadLocalStoragePointer(NULL, ThreadLocalStorageIdx, _self);
     static_cast<CoopTaskBase*>(_self)->func();
     static_cast<CoopTaskBase*>(_self)->_exit();
 }
@@ -279,11 +276,6 @@ int32_t CoopTaskBase::initialize()
 {
     if (!cont || init) return -1;
     init = true;
-    if (!tlsInitialized)
-    {
-        tlsInitialized = true;
-        vTaskSetThreadLocalStoragePointer(NULL, ThreadLocalStorageIdx, 0);
-    }
     if (*this)
     {
         xTaskCreateUniversal(taskFunc, name().c_str(), taskStackSize, this, 1, &taskHandle, CONFIG_ARDUINO_RUNNING_CORE);
@@ -316,9 +308,16 @@ int32_t CoopTaskBase::run()
         }
         sleep(false);
     }
+
+    current = this;
+
     if (!init)
     {
-        if (initialize() < 0) return -1;
+        if (initialize() < 0)
+        {
+            current = nullptr;
+            return -1;
+        }
     }
     bool resume = true;
     for (;;)
@@ -357,6 +356,8 @@ int32_t CoopTaskBase::run()
             break;
         }
     }
+
+    current = nullptr;
 
     if (!cont) {
         vTaskDelete(taskHandle);
@@ -423,14 +424,9 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
     }
 }
 
-bool CoopTaskBase::running() noexcept
+CoopTaskBase* CoopTaskBase::self() noexcept
 {
-    return tlsInitialized && pvTaskGetThreadLocalStoragePointer(NULL, ThreadLocalStorageIdx);
-}
-
-CoopTaskBase& CoopTaskBase::self() noexcept
-{
-    return *static_cast<CoopTaskBase*>(pvTaskGetThreadLocalStoragePointer(NULL, ThreadLocalStorageIdx));
+    return current;
 }
 
 #else
@@ -451,7 +447,7 @@ int32_t CoopTaskBase::initialize()
 #endif
     //Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
     func();
-    self()._exit();
+    self()->_exit();
     cont = false;
     return -1;
 }

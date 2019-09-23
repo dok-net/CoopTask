@@ -36,7 +36,7 @@ public:
     /// @returns: true, or false, if the current task does not own the mutex.
     bool unlock()
     {
-        if (CoopTaskBase::running() && &CoopTaskBase::self() == owner.load() && post())
+        if (CoopTaskBase::running() && CoopTaskBase::self() == owner.load() && post())
         {
             owner.store(nullptr);
             return true;
@@ -47,9 +47,9 @@ public:
     /// @returns: true if the mutex becomes locked. false if it is already locked by the same task, or the maximum number of pending tasks is exceeded.
     bool lock()
     {
-        if (CoopTaskBase::running() && &CoopTaskBase::self() != owner.load() && wait())
+        if (CoopTaskBase::running() && CoopTaskBase::self() != owner.load() && wait())
         {
-            owner.store(&CoopTaskBase::self());
+            owner.store(CoopTaskBase::self());
             return true;
         }
         return false;
@@ -58,9 +58,9 @@ public:
     /// @returns: true if the mutex becomes freshly locked without waiting, otherwise false.
     bool try_lock()
     {
-        if (CoopTaskBase::running() && &CoopTaskBase::self() != owner.load() && try_wait())
+        if (CoopTaskBase::running() && CoopTaskBase::self() != owner.load() && try_wait())
         {
-            owner.store(&CoopTaskBase::self());
+            owner.store(CoopTaskBase::self());
             return true;
         }
         return false;
