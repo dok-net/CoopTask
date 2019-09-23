@@ -87,13 +87,13 @@ protected:
 #elif defined(ESP32)
     TaskHandle_t taskHandle = nullptr;
     static void taskFunc(void* _self);
-    static constexpr auto MAXNUMBERCOOPTASKS = 20;
-    static std::atomic<CoopTaskBase*> taskList[MAXNUMBERCOOPTASKS];
 #else
     char* taskStackTop = nullptr;
     jmp_buf env;
     jmp_buf env_yield;
 #endif
+    static constexpr auto MAXNUMBERCOOPTASKS = 20;
+    static std::atomic<CoopTaskBase*> taskList[MAXNUMBERCOOPTASKS];
     static CoopTaskBase* current;
     bool init = false;
     bool cont = true;

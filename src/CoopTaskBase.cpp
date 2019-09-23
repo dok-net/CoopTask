@@ -125,11 +125,18 @@ bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
 #endif
 }
 
+std::atomic<CoopTaskBase*> CoopTaskBase::taskList[MAXNUMBERCOOPTASKS]{};
+
 #if defined(_MSC_VER)
 
 CoopTaskBase::~CoopTaskBase()
 {
     if (taskFiber) DeleteFiber(taskFiber);
+    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    {
+        CoopTaskBase* self = this;
+        if (taskList[i].compare_exchange_strong(self, nullptr)) break;
+    }
 }
 
 LPVOID CoopTaskBase::primaryFiber = nullptr;
@@ -286,8 +293,6 @@ void CoopTaskBase::taskFunc(void* _self)
     static_cast<CoopTaskBase*>(_self)->func();
     static_cast<CoopTaskBase*>(_self)->_exit();
 }
-
-std::atomic<CoopTaskBase*> CoopTaskBase::taskList[MAXNUMBERCOOPTASKS]{};
 
 int32_t CoopTaskBase::initialize()
 {
@@ -467,6 +472,15 @@ CoopTaskBase* CoopTaskBase::self() noexcept
 }
 
 #else
+
+CoopTaskBase::~CoopTaskBase()
+{
+    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    {
+        CoopTaskBase* self = this;
+        if (taskList[i].compare_exchange_strong(self, nullptr)) break;
+    }
+}
 
 int32_t CoopTaskBase::initialize()
 {
