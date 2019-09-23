@@ -68,14 +68,7 @@ protected:
     }
     CoopTaskBase(const CoopTaskBase&) = delete;
     CoopTaskBase& operator=(const CoopTaskBase&) = delete;
-    ~CoopTaskBase()
-    {
-#if defined(_MSC_VER)
-        if (taskFiber) DeleteFiber(taskFiber);
-#elif defined(ESP32)
-        if (taskHandle) vTaskDelete(taskHandle);
-#endif
-    }
+    ~CoopTaskBase();
 
     static constexpr int32_t DELAYMICROS_THRESHOLD = 50;
 
@@ -94,6 +87,8 @@ protected:
 #elif defined(ESP32)
     TaskHandle_t taskHandle = nullptr;
     static void taskFunc(void* _self);
+    static constexpr auto MAXNUMBERCOOPTASKS = 20;
+    static std::atomic<CoopTaskBase*> taskList[MAXNUMBERCOOPTASKS];
 #else
     char* taskStackTop = nullptr;
     jmp_buf env;
@@ -178,8 +173,8 @@ public:
     /// @returns: a pointer to the CoopTask instance that is running. nullptr if not called from a CoopTask function (running() == false).
     static CoopTaskBase* self() noexcept { return current; }
 #endif
-	/// @returns: true if called from the task function of a CoopTask, false otherwise.
-	static bool running() noexcept { return self(); }
+    /// @returns: true if called from the task function of a CoopTask, false otherwise.
+    static bool running() noexcept { return self(); }
 
     /// @returns: true if the task's is set to sleep.
     /// For a non-running task, this implies it is also currently not scheduled.

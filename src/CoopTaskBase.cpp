@@ -127,6 +127,11 @@ bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
 
 #if defined(_MSC_VER)
 
+CoopTaskBase::~CoopTaskBase()
+{
+    if (taskFiber) DeleteFiber(taskFiber);
+}
+
 LPVOID CoopTaskBase::primaryFiber = nullptr;
 
 void __stdcall CoopTaskBase::taskFiberFunc(void* self)
@@ -266,11 +271,23 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 
 #elif defined(ESP32)
 
+CoopTaskBase::~CoopTaskBase()
+{
+    if (taskHandle) vTaskDelete(taskHandle);
+    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    {
+        CoopTaskBase* self = this;
+        if (taskList[i].compare_exchange_strong(self, nullptr)) break;
+    }
+}
+
 void CoopTaskBase::taskFunc(void* _self)
 {
     static_cast<CoopTaskBase*>(_self)->func();
     static_cast<CoopTaskBase*>(_self)->_exit();
 }
+
+std::atomic<CoopTaskBase*> CoopTaskBase::taskList[MAXNUMBERCOOPTASKS]{};
 
 int32_t CoopTaskBase::initialize()
 {
@@ -279,7 +296,14 @@ int32_t CoopTaskBase::initialize()
     if (*this)
     {
         xTaskCreateUniversal(taskFunc, name().c_str(), taskStackSize, this, 1, &taskHandle, CONFIG_ARDUINO_RUNNING_CORE);
-        if (taskHandle) return 0;
+        if (taskHandle)
+        {
+            for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+            {
+                CoopTaskBase* null = nullptr;
+                if (taskList[i].compare_exchange_strong(null, this)) return 0;
+            }
+        }
     }
     cont = false;
     return -1;
@@ -361,6 +385,11 @@ int32_t CoopTaskBase::run()
 
     if (!cont) {
         vTaskDelete(taskHandle);
+        for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+        {
+            CoopTaskBase* self = this;
+            if (taskList[i].compare_exchange_strong(self, nullptr)) break;
+        }
         taskHandle = nullptr;
         return -1;
     }
@@ -426,7 +455,15 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 
 CoopTaskBase* CoopTaskBase::self() noexcept
 {
-    return current;
+    const auto currentTaskHandle = xTaskGetCurrentTaskHandle();
+    auto cur = current;
+    if (cur && currentTaskHandle == cur->taskHandle) return cur;
+    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    {
+        cur = taskList[i].load();
+        if (cur && currentTaskHandle == cur->taskHandle) return cur;
+    }
+    return nullptr;
 }
 
 #else
