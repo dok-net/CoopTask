@@ -373,51 +373,17 @@ void setup()
     if (!taskReport2->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport2->name().c_str()); }
 }
 
-#if !defined(ESP8266) // TODO: requires some PR to be merged: && !defined(ESP32)
-#if defined(ESP32)
-int32_t taskButtonRunnable = 0;
-#endif
-int32_t taskBlinkRunnable = 0;
-int32_t taskTextRunnable = 0;
-int32_t taskReportRunnable0 = 0;
-int32_t taskReportRunnable1 = 0;
-int32_t taskReportRunnable2 = 0;
-#if defined(ESP32)
-int32_t taskReportRunnable3 = 0;
-int32_t taskReportRunnable4 = 0;
-int32_t taskWebRunnable = 0;
-#endif
-#endif
-
-template<typename T> void runTask(int32_t& runnable, CoopTask<T>* task)
-{
-    if (runnable >= 0)
-    {
-        runnable = task->run();
-        // once when completed:
-        if (runnable < 0)
-        {
-            Serial.print(task->name()); Serial.print(" returns = "); Serial.println(task->exitCode());
-        }
-    }
-}
-
 void loop()
 {
 #if !defined(ESP8266)
-#if defined(ESP32)
-    runTask(taskButtonRunnable, taskButton);
-#endif
-    runTask(taskBlinkRunnable, taskBlink);
-    runTask(taskTextRunnable, taskText);
-    runTask(taskReportRunnable0, taskReport0);
-    runTask(taskReportRunnable1, taskReport1);
-    runTask(taskReportRunnable2, taskReport2);
-#if defined(ESP32)
-    runTask(taskReportRunnable3, taskReport3);
-    runTask(taskReportRunnable4, taskReport4);
-    runTask(taskWebRunnable, taskWeb);
-#endif
+    for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
+    {
+        auto task = CoopTaskBase::getRunnableTasks()[i].load();
+        if (task && task->run() < 0 && task == taskText)
+        {
+            Serial.print(task->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
+        }
+    }
 #endif
 
     // taskReport sleeps on first run(), and after each report.

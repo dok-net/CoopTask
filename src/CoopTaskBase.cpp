@@ -26,6 +26,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #if defined(ESP8266)
 #include <Schedule.h>
+#include <interrupts.h>
+using esp8266::InterruptLock;
+#elif !defined(ESP32) && defined(ARDUINO)
+class InterruptLock {
+public:
+    InterruptLock() {
+        noInterrupts();
+    }
+    ~InterruptLock() {
+        interrupts();
+    }
+};
 #endif
 
 extern "C" {
@@ -57,6 +69,8 @@ extern "C" {
     }
 #endif
 }
+
+std::array< std::atomic<CoopTaskBase* >, CoopTaskBase::MAXNUMBERCOOPTASKS> CoopTaskBase::runnableTasks{};
 
 CoopTaskBase* CoopTaskBase::current = nullptr;
 
@@ -108,9 +122,65 @@ bool CoopTaskBase::rescheduleTask(uint32_t repeat_us)
 }
 #endif
 
+bool CoopTaskBase::setRunnable()
+{
+    bool inserted = false;
+    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    {
+#if !defined(ESP32) && defined(ARDUINO)
+        InterruptLock lock;
+        auto task = runnableTasks[i].load();
+        if (!inserted && nullptr == task)
+        {
+            runnableTasks[i].store(this);
+            inserted = true;
+        }
+        else if (this == task)
+        {
+            if (!inserted) break;
+            runnableTasks[i].store(nullptr);
+        }
+#else
+        CoopTaskBase* cmpTo = nullptr;
+        if (!inserted && runnableTasks[i].compare_exchange_strong(cmpTo, this))
+        {
+            inserted = true;
+        }
+        else if (inserted)
+        {
+            cmpTo = this;
+            runnableTasks[i].compare_exchange_strong(cmpTo, nullptr);
+        }
+        else if (this == runnableTasks[i].load())
+        {
+            break;
+        }
+#endif
+    }
+    return true;
+}
+
+void CoopTaskBase::unsetRunnable()
+{
+    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    {
+#if defined(_MSC_VER) || defined(ESP32) || !defined(ARDUINO)
+        CoopTaskBase * self = this;
+        if (runnableTasks[i].compare_exchange_strong(self, nullptr)) break;
+#else
+        InterruptLock lock;
+        if (runnableTasks[i].load() == this)
+        {
+            runnableTasks[i].store(nullptr);
+            break;
+        }
+#endif
+    }
+}
+
 bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
 {
-    if (!*this) return false;
+    if (!*this || !setRunnable()) return false;
 #if defined(ESP8266)
     bool reschedule = sleeping();
 #endif
@@ -125,18 +195,12 @@ bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
 #endif
 }
 
-std::atomic<CoopTaskBase*> CoopTaskBase::taskList[MAXNUMBERCOOPTASKS]{};
-
 #if defined(_MSC_VER)
 
 CoopTaskBase::~CoopTaskBase()
 {
     if (taskFiber) DeleteFiber(taskFiber);
-    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
-    {
-        CoopTaskBase* self = this;
-        if (taskList[i].compare_exchange_strong(self, nullptr)) break;
-    }
+    unsetRunnable();
 }
 
 LPVOID CoopTaskBase::primaryFiber = nullptr;
@@ -162,6 +226,7 @@ int32_t CoopTaskBase::initialize()
         }
     }
     cont = false;
+    unsetRunnable();
     return -1;
 }
 
@@ -202,6 +267,7 @@ int32_t CoopTaskBase::run()
     if (!cont) {
         DeleteFiber(taskFiber);
         taskFiber = NULL;
+        unsetRunnable();
         return -1;
     }
     switch (val)
@@ -281,11 +347,7 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 CoopTaskBase::~CoopTaskBase()
 {
     if (taskHandle) vTaskDelete(taskHandle);
-    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
-    {
-        CoopTaskBase* self = this;
-        if (taskList[i].compare_exchange_strong(self, nullptr)) break;
-    }
+    unsetRunnable();
 }
 
 void CoopTaskBase::taskFunc(void* _self)
@@ -301,16 +363,10 @@ int32_t CoopTaskBase::initialize()
     if (*this)
     {
         xTaskCreateUniversal(taskFunc, name().c_str(), taskStackSize, this, 1, &taskHandle, CONFIG_ARDUINO_RUNNING_CORE);
-        if (taskHandle)
-        {
-            for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
-            {
-                CoopTaskBase* null = nullptr;
-                if (taskList[i].compare_exchange_strong(null, this)) return 0;
-            }
-        }
+        if (taskHandle) return 0;
     }
     cont = false;
+    unsetRunnable();
     return -1;
 }
 
@@ -390,12 +446,8 @@ int32_t CoopTaskBase::run()
 
     if (!cont) {
         vTaskDelete(taskHandle);
-        for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
-        {
-            CoopTaskBase* self = this;
-            if (taskList[i].compare_exchange_strong(self, nullptr)) break;
-        }
         taskHandle = nullptr;
+        unsetRunnable();
         return -1;
     }
     return delay_duration;
@@ -465,7 +517,7 @@ CoopTaskBase* CoopTaskBase::self() noexcept
     if (cur && currentTaskHandle == cur->taskHandle) return cur;
     for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
-        cur = taskList[i].load();
+        cur = runnableTasks[i].load();
         if (cur && currentTaskHandle == cur->taskHandle) return cur;
     }
     return nullptr;
@@ -475,11 +527,7 @@ CoopTaskBase* CoopTaskBase::self() noexcept
 
 CoopTaskBase::~CoopTaskBase()
 {
-    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
-    {
-        CoopTaskBase* self = this;
-        if (taskList[i].compare_exchange_strong(self, nullptr)) break;
-    }
+    unsetRunnable();
 }
 
 int32_t CoopTaskBase::initialize()
@@ -500,6 +548,9 @@ int32_t CoopTaskBase::initialize()
     func();
     self()->_exit();
     cont = false;
+    delete[] taskStackTop;
+    taskStackTop = nullptr;
+    unsetRunnable();
     return -1;
 }
 
@@ -555,6 +606,7 @@ int32_t CoopTaskBase::run()
     if (!cont) {
         delete[] taskStackTop;
         taskStackTop = nullptr;
+        unsetRunnable();
         return -1;
     }
     switch (val)

@@ -39,10 +39,6 @@ CoopTask<int>* firstTask;
 CoopTask<int>* secondTask;
 CoopTask<int>* thirdTask;
 
-#ifndef ESP8266
-CoopTask<int>** tasks[] = { &firstTask, &secondTask, &thirdTask };
-#endif
-
 void setup() {
 #ifdef ESP8266
     Serial.begin(74880);
@@ -165,16 +161,15 @@ void setup() {
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-#ifndef ESP8266
-    for (auto task : tasks)
+#if !defined(ESP8266)
+    for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
-        if (!*task) continue;
-        if ((*task)->run() < 0)
+        auto task = static_cast<CoopTask<>*>(CoopTaskBase::getRunnableTasks()[i].load());
+        if (task && task->run() < 0)
         {
             Serial.print("deleting task ");
-            Serial.println((*task)->name());
-            delete* task;
-            *task = nullptr;
+            Serial.println(task->name());
+            delete task;
         }
     }
 #endif

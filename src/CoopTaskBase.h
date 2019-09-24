@@ -93,7 +93,7 @@ protected:
     jmp_buf env_yield;
 #endif
     static constexpr auto MAXNUMBERCOOPTASKS = 20;
-    static std::atomic<CoopTaskBase*> taskList[MAXNUMBERCOOPTASKS];
+    static std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS> runnableTasks;
     static CoopTaskBase* current;
     bool init = false;
     bool cont = true;
@@ -111,6 +111,8 @@ protected:
 #if defined(ESP8266)
     bool rescheduleTask(uint32_t repeat_us);
 #endif
+    bool setRunnable();
+    void unsetRunnable();
 
     void _exit() noexcept;
     void _yield() noexcept;
@@ -151,6 +153,13 @@ public:
     /// Ready the task for scheduling, by default waking up the task from both sleep and delay.
     /// @returns: true on success.
     bool IRAM_ATTR scheduleTask(bool wakeup = true);
+
+    /// Every task is entered into this list by scheduleTask(). It is removed when it exits
+    /// or gets deleted.
+    static const std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS>& getRunnableTasks()
+    {
+        return runnableTasks;
+    }
 
     /// @returns: -1: exited. 0: runnable or sleeping. >0: delayed for milliseconds or microseconds, check delayIsMs().
     int32_t run();
