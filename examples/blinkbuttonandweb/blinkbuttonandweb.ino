@@ -25,6 +25,14 @@ WebServer server(80);
 #define IRAM_ATTR ICACHE_RAM_ATTR
 #endif
 
+#ifdef ESP32
+constexpr auto LEDON = HIGH;
+constexpr auto LEDOFF = LOW;
+#else
+constexpr auto LEDON = LOW;
+constexpr auto LEDOFF = HIGH;
+#endif
+
 #if defined(ESP32)
 #define BUTTON1 17
 #elif defined(ARDUINO_ESP8266_WEMOS_D1MINI)
@@ -80,10 +88,10 @@ int loopBlink() noexcept
 {
     for (;;)
     {
-        digitalWrite(LED_BUILTIN, LOW);
+        digitalWrite(LED_BUILTIN, LEDOFF);
         blinkSema.wait(1000);
-        digitalWrite(LED_BUILTIN, HIGH);
-        blinkSema.wait(4000);
+        digitalWrite(LED_BUILTIN, LEDON);
+        delay(4000);
     }
     return 0;
 }
