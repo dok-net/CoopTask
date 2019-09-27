@@ -285,7 +285,7 @@ int32_t CoopTaskBase::run()
 
 uint32_t CoopTaskBase::getFreeStack()
 {
-    return taskStackSize;
+    return taskFiber ? taskStackSize : 0;
 }
 
 void CoopTaskBase::doYield(uint32_t val) noexcept
@@ -455,7 +455,7 @@ int32_t CoopTaskBase::run()
 
 uint32_t CoopTaskBase::getFreeStack()
 {
-    return uxTaskGetStackHighWaterMark(taskHandle);
+    return taskHandle ? uxTaskGetStackHighWaterMark(taskHandle) : 0;
 }
 
 void CoopTaskBase::_delay(uint32_t ms) noexcept
