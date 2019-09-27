@@ -252,12 +252,19 @@ void setup()
 #if defined(ESP8266) || defined(ESP32)
     button1 = new Button(BUTTON1, reportSema);
 
-    taskButton = new CoopTask<>(F("Button"), loopButton, 0x700);
+    taskButton = new CoopTask<>(F("Button"), loopButton,
+#if defined(ESP8266)
+        0x700);
+#elif defined(ESP32)
+        0x940);
+#endif
     if (!*taskButton) Serial.printf("CoopTask %s out of stack\n", taskButton->name().c_str());
 #endif
 
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266)
     taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x400);
+#elif defined(ESP32)
+    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x540);
 #else
     taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x70);
 #endif
@@ -280,8 +287,10 @@ void setup()
             //CoopTask<uint32_t>::exit(42);
             return 43;
         }
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266)
     , 0x380);
+#elif defined(ESP32)
+    , 0x4c0);
 #else
     , 0x70);
 #endif
@@ -356,7 +365,12 @@ void setup()
                 yield();
             }
             return 0;
-        }, 0x800);
+        },
+#if defined(ESP8266)
+        0x800);
+#else
+        0xa00);
+#endif
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
     Serial.println("Scheduler test");
