@@ -25,12 +25,12 @@ WebServer server(80);
 #define IRAM_ATTR ICACHE_RAM_ATTR
 #endif
 
-#ifdef ESP32
-constexpr auto LEDON = HIGH;
-constexpr auto LEDOFF = LOW;
-#else
+#if defined(ESP8266)
 constexpr auto LEDON = LOW;
 constexpr auto LEDOFF = HIGH;
+#else
+constexpr auto LEDON = HIGH;
+constexpr auto LEDOFF = LOW;
 #endif
 
 #if defined(ESP32)
