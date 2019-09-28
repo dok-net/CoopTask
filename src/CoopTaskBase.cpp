@@ -165,7 +165,7 @@ void CoopTaskBase::unsetRunnable()
     for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
 #if defined(_MSC_VER) || defined(ESP32) || !defined(ARDUINO)
-        CoopTaskBase * self = this;
+        CoopTaskBase* self = this;
         if (runnableTasks[i].compare_exchange_strong(self, nullptr)) break;
 #else
         InterruptLock lock;
@@ -348,6 +348,8 @@ CoopTaskBase::~CoopTaskBase()
 {
     if (taskHandle) vTaskDelete(taskHandle);
     unsetRunnable();
+    // yield to IDLE task, which cleans up the deleted task's resources
+    vTaskDelay(0);
 }
 
 void CoopTaskBase::taskFunc(void* _self)
@@ -448,6 +450,8 @@ int32_t CoopTaskBase::run()
         vTaskDelete(taskHandle);
         taskHandle = nullptr;
         unsetRunnable();
+        // yield to IDLE task, which cleans up the deleted task's resources
+        vTaskDelay(0);
         return -1;
     }
     return delay_duration;
