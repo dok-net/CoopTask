@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #if defined(ESP8266) || defined(ESP32)
 #include <functional>
+#include <array>
 #include <memory>
 #include <csetjmp>
 #include <Arduino.h>
@@ -30,10 +31,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <Arduino.h>
 #elif defined(_MSC_VER)
 #include <functional>
+#include <array>
 #include <Windows.h>
 #include <string>
 #else
 #include <functional>
+#include <array>
 #include <csetjmp>
 #include <string>
 #endif
