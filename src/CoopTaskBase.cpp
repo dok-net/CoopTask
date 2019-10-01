@@ -115,7 +115,7 @@ bool CoopTaskBase::rescheduleTask(uint32_t repeat_us)
         if (next_repeat_us > 26000000) next_repeat_us = 26000000;
         if (next_repeat_us == repeat_us) break;
         // rather keep scheduling at wrong interval than drop altogether
-        return !schedule_recurrent_function_us([this, next_repeat_us]() { return rescheduleTask(next_repeat_us); }, next_repeat_us, &delayed());
+        return !schedule_recurrent_function_us([this, next_repeat_us]() { return rescheduleTask(next_repeat_us); }, next_repeat_us, [this]() { return !delayed(); });
         break;
     }
     return true;

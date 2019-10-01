@@ -191,7 +191,7 @@ public:
     /// @returns: true if the task's is set to sleep.
     /// For a non-running task, this implies it is also currently not scheduled.
     inline bool IRAM_ATTR sleeping() const noexcept __attribute__((always_inline)) { return sleeps.load(); }
-    inline const std::atomic<bool>& IRAM_ATTR delayed() const noexcept __attribute__((always_inline)) { return delays; }
+    inline bool IRAM_ATTR delayed() const noexcept __attribute__((always_inline)) { return delays.load(); }
     inline bool IRAM_ATTR suspended() const noexcept __attribute__((always_inline)) { return sleeps.load() || delays.load(); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
