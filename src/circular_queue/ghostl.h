@@ -22,8 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __ghostl_h
 #define __ghostl_h
 
-#include <util/atomic.h>
-
 namespace std
 {
     template< typename T, int N > class array
