@@ -114,8 +114,8 @@ protected:
 #if defined(ESP8266)
     bool rescheduleTask(uint32_t repeat_us);
 #endif
-    bool setRunnable();
-    void unsetRunnable();
+    bool enrollRunnable();
+    void delistRunnable();
 
     void _exit() noexcept;
     void _yield() noexcept;

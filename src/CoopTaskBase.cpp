@@ -122,7 +122,7 @@ bool CoopTaskBase::rescheduleTask(uint32_t repeat_us)
 }
 #endif
 
-bool CoopTaskBase::setRunnable()
+bool CoopTaskBase::enrollRunnable()
 {
     bool inserted = false;
     for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
@@ -160,7 +160,7 @@ bool CoopTaskBase::setRunnable()
     return true;
 }
 
-void CoopTaskBase::unsetRunnable()
+void CoopTaskBase::delistRunnable()
 {
     for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
@@ -180,7 +180,7 @@ void CoopTaskBase::unsetRunnable()
 
 bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
 {
-    if (!*this || !setRunnable()) return false;
+    if (!*this || !enrollRunnable()) return false;
 #if defined(ESP8266)
     bool reschedule = sleeping();
 #endif
@@ -200,7 +200,7 @@ bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
 CoopTaskBase::~CoopTaskBase()
 {
     if (taskFiber) DeleteFiber(taskFiber);
-    unsetRunnable();
+    delistRunnable();
 }
 
 LPVOID CoopTaskBase::primaryFiber = nullptr;
@@ -226,7 +226,7 @@ int32_t CoopTaskBase::initialize()
         }
     }
     cont = false;
-    unsetRunnable();
+    delistRunnable();
     return -1;
 }
 
@@ -267,7 +267,7 @@ int32_t CoopTaskBase::run()
     if (!cont) {
         DeleteFiber(taskFiber);
         taskFiber = NULL;
-        unsetRunnable();
+        delistRunnable();
         return -1;
     }
     switch (val)
@@ -347,7 +347,7 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 CoopTaskBase::~CoopTaskBase()
 {
     if (taskHandle) vTaskDelete(taskHandle);
-    unsetRunnable();
+    delistRunnable();
     // yield to IDLE task, which cleans up the deleted task's resources
     vTaskDelay(0);
 }
@@ -368,7 +368,7 @@ int32_t CoopTaskBase::initialize()
         if (taskHandle) return 0;
     }
     cont = false;
-    unsetRunnable();
+    delistRunnable();
     return -1;
 }
 
@@ -449,7 +449,7 @@ int32_t CoopTaskBase::run()
     if (!cont) {
         vTaskDelete(taskHandle);
         taskHandle = nullptr;
-        unsetRunnable();
+        delistRunnable();
         // yield to IDLE task, which cleans up the deleted task's resources
         vTaskDelay(0);
         return -1;
@@ -531,7 +531,7 @@ CoopTaskBase* CoopTaskBase::self() noexcept
 
 CoopTaskBase::~CoopTaskBase()
 {
-    unsetRunnable();
+    delistRunnable();
 }
 
 int32_t CoopTaskBase::initialize()
@@ -554,7 +554,7 @@ int32_t CoopTaskBase::initialize()
     cont = false;
     delete[] taskStackTop;
     taskStackTop = nullptr;
-    unsetRunnable();
+    delistRunnable();
     return -1;
 }
 
@@ -610,7 +610,7 @@ int32_t CoopTaskBase::run()
     if (!cont) {
         delete[] taskStackTop;
         taskStackTop = nullptr;
-        unsetRunnable();
+        delistRunnable();
         return -1;
     }
     switch (val)
