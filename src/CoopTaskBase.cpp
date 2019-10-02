@@ -347,6 +347,7 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 CoopTaskBase::~CoopTaskBase()
 {
     if (taskHandle) vTaskDelete(taskHandle);
+    taskHandle = nullptr;
     delistRunnable();
     // yield to IDLE task, which cleans up the deleted task's resources
     vTaskDelay(0);
@@ -364,8 +365,12 @@ int32_t CoopTaskBase::initialize()
     init = true;
     if (*this)
     {
-        xTaskCreateUniversal(taskFunc, name().c_str(), taskStackSize, this, 1, &taskHandle, CONFIG_ARDUINO_RUNNING_CORE);
-        if (taskHandle) return 0;
+        xTaskCreateUniversal(taskFunc, name().c_str(), taskStackSize, this, tskIDLE_PRIORITY, &taskHandle, CONFIG_ARDUINO_RUNNING_CORE);
+        if (taskHandle)
+        {
+            vTaskSuspend(taskHandle);
+            return 0;
+        }
     }
     cont = false;
     delistRunnable();
@@ -374,14 +379,23 @@ int32_t CoopTaskBase::initialize()
 
 int32_t CoopTaskBase::run()
 {
+    constexpr auto MAXDELAY = (~0UL) >> 1;
     if (!cont) return -1;
     if (sleeps.load()) return 0;
     if (delays.load())
     {
         if (delay_ms)
         {
-            auto expired = millis() - delay_start;
-            if (expired < delay_duration) return delay_duration - expired;
+            if (MAXDELAY == delay_duration && eSuspended != eTaskGetState(taskHandle))
+            {
+                // fall through
+            }
+            else
+            {
+                auto expired = millis() - delay_start;
+                if (expired < delay_duration) return delay_duration - expired;
+                sleep(false);
+            }
         }
         else
         {
@@ -392,8 +406,8 @@ int32_t CoopTaskBase::run()
                 if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
                 ::delayMicroseconds(delay_rem);
             }
+            sleep(false);
         }
-        sleep(false);
     }
 
     current = this;
@@ -412,13 +426,26 @@ int32_t CoopTaskBase::run()
         auto taskState = eTaskGetState(taskHandle);
         if (eSuspended == taskState)
         {
-            if (!resume) break;
+            if (!resume)
+            {
+                vTaskPrioritySet(taskHandle, tskIDLE_PRIORITY);
+                break;
+            }
             resume = false;
+            vTaskPrioritySet(taskHandle, 1);
             vTaskResume(taskHandle);
             continue;
         }
         else if (eReady == taskState)
         {
+            if (resume)
+            {
+                resume = false;
+                sleep(false);
+                delay_duration = 0;
+                vTaskPrioritySet(taskHandle, 1);
+                continue;
+            }
             vPortYield();
             continue;
         }
@@ -426,14 +453,19 @@ int32_t CoopTaskBase::run()
         {
             if (resume)
             {
-                vTaskSuspend(taskHandle);
-                continue;
+                if (!delays.load())
+                {
+                    vTaskSuspend(taskHandle);
+                    continue;
+                }
+                break;
             }
+            vTaskPrioritySet(taskHandle, tskIDLE_PRIORITY);
             if (!delays.exchange(true))
             {
                 delay_ms = true;
                 delay_start = millis();
-                delay_duration = (~0UL) >> 1;
+                delay_duration = MAXDELAY;
             }
             break;
         }
@@ -468,8 +500,7 @@ void CoopTaskBase::_delay(uint32_t ms) noexcept
     delay_ms = true;
     delay_start = millis();
     delay_duration = ms;
-    vTaskDelay(ms / portTICK_PERIOD_MS);
-    _yield();
+    vTaskSuspend(taskHandle);
 }
 
 void CoopTaskBase::_delayMicroseconds(uint32_t us) noexcept
