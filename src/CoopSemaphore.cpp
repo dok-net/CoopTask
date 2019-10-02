@@ -191,7 +191,7 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
 #endif
                 return false;
             }
-            delay(ms - expired);
+            CoopTaskBase::delay(ms - expired);
         }
         else
         {
