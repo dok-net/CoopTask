@@ -71,6 +71,7 @@ extern "C" {
 }
 
 std::array< std::atomic<CoopTaskBase* >, CoopTaskBase::MAXNUMBERCOOPTASKS> CoopTaskBase::runnableTasks{};
+std::atomic<uint32_t> CoopTaskBase::runnableTasksCount(0);
 
 CoopTaskBase* CoopTaskBase::current = nullptr;
 
@@ -124,54 +125,78 @@ bool CoopTaskBase::rescheduleTask(uint32_t repeat_us)
 
 bool CoopTaskBase::enrollRunnable()
 {
+    bool enrolled = false;
     bool inserted = false;
     for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
 #if !defined(ESP32) && defined(ARDUINO)
         InterruptLock lock;
         auto task = runnableTasks[i].load();
-        if (!inserted && nullptr == task)
+        if (!enrolled && nullptr == task)
         {
             runnableTasks[i].store(this);
+            enrolled = true;
             inserted = true;
         }
         else if (this == task)
         {
-            if (!inserted) break;
-            runnableTasks[i].store(nullptr);
+            if (enrolled)
+            {
+                runnableTasks[i].store(nullptr);
+                inserted = false;
+            }
+            else
+            {
+                enrolled = true;
+            }
+            break;
         }
+    }
+    if (inserted) runnableTasksCount.store(runnableTasksCount.load() + 1);
 #else
         CoopTaskBase* cmpTo = nullptr;
-        if (!inserted && runnableTasks[i].compare_exchange_strong(cmpTo, this))
+        if (!enrolled && runnableTasks[i].compare_exchange_strong(cmpTo, this))
         {
+            enrolled = true;
             inserted = true;
         }
-        else if (inserted)
+        else if (enrolled)
         {
             cmpTo = this;
-            runnableTasks[i].compare_exchange_strong(cmpTo, nullptr);
+            if (runnableTasks[i].compare_exchange_strong(cmpTo, nullptr))
+            {
+                inserted = false;
+                break;
+            }
         }
         else if (this == runnableTasks[i].load())
         {
+            enrolled = true;
             break;
         }
-#endif
     }
-    return true;
+    if (inserted) ++runnableTasksCount;
+#endif
+    return enrolled;
 }
 
 void CoopTaskBase::delistRunnable()
 {
     for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
-#if defined(_MSC_VER) || defined(ESP32) || !defined(ARDUINO)
-        CoopTaskBase* self = this;
-        if (runnableTasks[i].compare_exchange_strong(self, nullptr)) break;
-#else
+#if !defined(ESP32) && defined(ARDUINO)
         InterruptLock lock;
         if (runnableTasks[i].load() == this)
         {
             runnableTasks[i].store(nullptr);
+            runnableTasksCount.store(runnableTasksCount.load() - 1);
+            break;
+        }
+#else
+        CoopTaskBase* self = this;
+        if (runnableTasks[i].compare_exchange_strong(self, nullptr))
+        {
+            --runnableTasksCount;
             break;
         }
 #endif
@@ -349,8 +374,6 @@ CoopTaskBase::~CoopTaskBase()
     if (taskHandle) vTaskDelete(taskHandle);
     taskHandle = nullptr;
     delistRunnable();
-    // yield to IDLE task, which cleans up the deleted task's resources
-    vTaskDelay(0);
 }
 
 void CoopTaskBase::taskFunc(void* _self)
@@ -482,8 +505,6 @@ int32_t CoopTaskBase::run()
         vTaskDelete(taskHandle);
         taskHandle = nullptr;
         delistRunnable();
-        // yield to IDLE task, which cleans up the deleted task's resources
-        vTaskDelay(0);
         return -1;
     }
     return delay_duration;

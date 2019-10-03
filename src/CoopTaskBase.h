@@ -97,6 +97,7 @@ protected:
 #endif
     static constexpr auto MAXNUMBERCOOPTASKS = 20;
     static std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS> runnableTasks;
+    static std::atomic<uint32_t> runnableTasksCount;
     static CoopTaskBase* current;
     bool init = false;
     bool cont = true;
@@ -162,6 +163,11 @@ public:
     static const std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS>& getRunnableTasks()
     {
         return runnableTasks;
+    }
+    /// @returns: the count of runnable, non-nullptr, tasks in the return of getRunnableTasks().
+    static uint32_t getRunnableTasksCount()
+    {
+        return runnableTasksCount.load();
     }
 
     /// @returns: -1: exited. 0: runnable or sleeping. >0: delayed for milliseconds or microseconds, check delayIsMs().

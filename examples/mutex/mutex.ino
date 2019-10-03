@@ -162,14 +162,19 @@ void setup() {
 // the loop function runs over and over again until power down or reset
 void loop() {
 #if !defined(ESP8266)
+    uint32_t taskCount = 0;
     for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
         auto task = static_cast<CoopTask<>*>(CoopTaskBase::getRunnableTasks()[i].load());
-        if (task && task->run() < 0)
+        if (task)
         {
-            Serial.print("deleting task ");
-            Serial.println(task->name());
-            delete task;
+            if (task->run() < 0)
+            {
+                Serial.print("deleting task ");
+                Serial.println(task->name());
+                delete task;
+            }
+            if (task && ++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
         }
     }
 #endif

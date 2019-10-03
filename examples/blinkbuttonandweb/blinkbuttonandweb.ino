@@ -398,12 +398,17 @@ void setup()
 void loop()
 {
 #if !defined(ESP8266)
+    uint32_t taskCount = 0;
     for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
         auto task = CoopTaskBase::getRunnableTasks()[i].load();
-        if (task && task->run() < 0 && task == taskText)
+        if (task)
         {
-            Serial.print(task->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
+            if (task->run() < 0 && task == taskText)
+            {
+                Serial.print(task->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
+            }
+            if (task && ++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
         }
     }
 #endif
