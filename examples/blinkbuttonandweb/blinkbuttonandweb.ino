@@ -91,7 +91,7 @@ int loopBlink() noexcept
         digitalWrite(LED_BUILTIN, LEDOFF);
         blinkSema.wait(1000);
         digitalWrite(LED_BUILTIN, LEDON);
-        delay(4000);
+        CoopTask<>::delay(4000);
     }
     return 0;
 }
@@ -209,6 +209,9 @@ public:
         Serial.println(" stack unwound, RAIITest object destructed");
     }
 };
+
+TaskHandle_t yieldGuardHandle;
+
 void setup()
 {
 #ifdef ESP8266
@@ -277,7 +280,7 @@ void setup()
             yield();
             Serial.println("Task1 - B");
             uint32_t start = millis();
-            delay(6000);
+            CoopTask<>::delay(6000);
             Serial.print("!!!Task1 - C - ");
             Serial.println(millis() - start);
             printStackReport(taskText);
@@ -375,10 +378,6 @@ void setup()
 
     Serial.println("Scheduler test");
 
-#ifdef ESP32
-    Serial.print("Loop free stack = "); Serial.println(uxTaskGetStackHighWaterMark(NULL));
-#endif
-
     reportCnt = 0;
     start = micros();
 
@@ -393,30 +392,51 @@ void setup()
     if (!taskReport0->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport0->name().c_str()); }
     if (!taskReport1->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport1->name().c_str()); }
     if (!taskReport2->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport2->name().c_str()); }
+
+#ifdef ESP32
+    Serial.print("Loop free stack = "); Serial.println(uxTaskGetStackHighWaterMark(NULL));
+
+    xTaskCreateUniversal([](void*)
+        {
+            for (;;)
+            {
+                vPortYield();
+            }
+        }, "YieldGuard", 8192, nullptr, 1, &yieldGuardHandle, CONFIG_ARDUINO_RUNNING_CORE);
+#endif
 }
 
 void loop()
 {
 #if !defined(ESP8266)
     uint32_t taskCount = 0;
+    uint32_t minDelay = ~0UL;
     for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
         auto task = CoopTaskBase::getRunnableTasks()[i].load();
         if (task)
         {
-            if (task->run() < 0 && task == taskText)
+            auto runResult = task->run();
+            if (runResult < 0 && task == taskText)
             {
                 Serial.print(task->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
             }
-            if (task && ++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
+            if (task->delayed() && runResult < minDelay) minDelay = runResult;
+            if (++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
         }
+    }
+    if (minDelay)
+    {
+        vTaskSuspend(yieldGuardHandle);
+        vTaskDelay(1);
+        vTaskResume(yieldGuardHandle);
     }
 #endif
 
     // taskReport sleeps on first run(), and after each report.
     // It resets reportCnt to 0 on each report.
     ++reportCnt;
-    if (reportCnt > 200000)
+    if (reportCnt > 8000)
     {
         reportSema.post();
     }

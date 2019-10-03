@@ -402,16 +402,15 @@ int32_t CoopTaskBase::initialize()
 
 int32_t CoopTaskBase::run()
 {
-    constexpr auto MAXDELAY = (~0UL) >> 1;
     if (!cont) return -1;
     if (sleeps.load()) return 0;
     if (delays.load())
     {
         if (delay_ms)
         {
-            if (MAXDELAY == delay_duration && eSuspended != eTaskGetState(taskHandle))
+            if (0 == delay_duration && eSuspended != eTaskGetState(taskHandle))
             {
-                // fall through
+                // fall through, blocked during FreeRTOS delay or asynchronously ready after is specifically handled below
             }
             else
             {
@@ -488,7 +487,7 @@ int32_t CoopTaskBase::run()
             {
                 delay_ms = true;
                 delay_start = millis();
-                delay_duration = MAXDELAY;
+                delay_duration = 0;
             }
             break;
         }
