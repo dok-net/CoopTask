@@ -82,15 +82,24 @@ int main()
 
     for (;;)
     {
-        terminator.run();
-        hello.run();
-        // once: hello posts terminatorSema -> terminator sets keepBlinking = false -> blink exits -> break leaves for-loop -> program exits
-        if (blink.run() < 0)
+        uint32_t taskCount = 0;
+        uint32_t minDelay = ~0UL;
+        for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
         {
-            std::cerr << blink.name() << " returns = " << blink.exitCode() << std::endl;
-            break;
+            auto task = CoopTaskBase::getRunnableTasks()[i].load();
+            if (task)
+            {
+                auto runResult = task->run();
+                // once: hello posts terminatorSema -> terminator sets keepBlinking = false -> blink exits -> break leaves for-loop -> program exits
+                if (runResult < 0 && task == &blink)
+                {
+                    std::cerr << task->name() << " returns = " << blink.exitCode() << std::endl;
+                    return 0;
+                }
+                if (task->delayed() && runResult < minDelay) minDelay = runResult;
+                if (++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
+            }
         }
-        report.run();
     }
     return 0;
 }
