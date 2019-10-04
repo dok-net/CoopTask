@@ -422,13 +422,20 @@ void setup()
             {
                 vPortYield();
             }
-        }, "YieldGuard", 8192, nullptr, 1, &yieldGuardHandle, CONFIG_ARDUINO_RUNNING_CORE);
+        }, "YieldGuard", 0x200, nullptr, 1, &yieldGuardHandle, CONFIG_ARDUINO_RUNNING_CORE);
 #endif
 }
 
 void loop()
 {
-#if !defined(ESP8266)
+#if defined(ESP8266)
+    if (taskText && !*taskText)
+    {
+        Serial.print(taskText->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
+        taskText = nullptr;
+        delete taskText;
+    }
+#else
     uint32_t taskCount = 0;
     uint32_t minDelay = ~0UL;
     for (int i = 0; i < BasicCoopTask<>::getRunnableTasks().size(); ++i)

@@ -89,7 +89,7 @@ and control CPU time for the idle task.
 
 See the examples/mutex or examples/blinkbuttonandweb for sample code. Basically:
 
-``
+```
 #ifdef ESP32
 TaskHandle_t yieldGuardHandle;
 #endif
@@ -105,7 +105,7 @@ void setup()
             {
                 vPortYield();
             }
-        }, "YieldGuard", 8192, nullptr, 1, &yieldGuardHandle, CONFIG_ARDUINO_RUNNING_CORE);
+        }, "YieldGuard", 0x200, nullptr, 1, &yieldGuardHandle, CONFIG_ARDUINO_RUNNING_CORE);
 #endif
 }
 
@@ -138,4 +138,4 @@ void loop() {
 #endif
 #endif
 }
-``
+```
