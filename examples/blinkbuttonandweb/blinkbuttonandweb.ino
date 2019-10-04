@@ -1,4 +1,5 @@
 #include <CoopTask.h>
+#include <CoopMutex.h>
 #include <CoopSemaphore.h>
 
 #if defined(ESP8266)
@@ -82,6 +83,8 @@ private:
 };
 #endif
 
+CoopMutex serialMutex;
+
 CoopSemaphore blinkSema(0);
 
 int loopBlink() noexcept
@@ -114,8 +117,12 @@ int loopButton() noexcept
         {
             ++count;
         }
-        Serial.print("loopButton: count = ");
-        Serial.println(count);
+        {
+            CoopMutexLock serialLock(serialMutex);
+
+            Serial.print("loopButton: count = ");
+            Serial.println(count);
+        }
         if (nullptr != button1 && 8000 < button1->testResetPressed()) {
             delete button1;
             button1 = nullptr;
@@ -205,12 +212,15 @@ class RAIITest
 public:
     ~RAIITest()
     {
+        CoopMutexLock serialLock(serialMutex);
         Serial.print(CoopTaskBase::self()->name());
         Serial.println(" stack unwound, RAIITest object destructed");
     }
 };
 
+#ifdef ESP32
 TaskHandle_t yieldGuardHandle;
+#endif
 
 void setup()
 {
@@ -219,7 +229,10 @@ void setup()
 #else
     Serial.begin(115200);
 #endif
+    while (!Serial) {}
     delay(500);
+
+    Serial.println("Scheduler test");
 
 #if defined(ESP8266) || defined(ESP32)
     WiFi.mode(WIFI_STA);
@@ -281,9 +294,12 @@ void setup()
             Serial.println("Task1 - B");
             uint32_t start = millis();
             CoopTask<>::delay(6000);
-            Serial.print("!!!Task1 - C - ");
-            Serial.println(millis() - start);
-            printStackReport(taskText);
+            {
+                CoopMutexLock serialLock(serialMutex);
+                Serial.print("!!!Task1 - C - ");
+                Serial.println(millis() - start);
+                printStackReport(taskText);
+            }
 #if !defined(ARDUINO)
             throw static_cast<uint32_t>(41);
 #endif
@@ -305,16 +321,22 @@ void setup()
         for (;;) {
             if (!reportSema.wait(120000))
             {
-                Serial.print(CoopTaskBase::self()->name().c_str());
-                Serial.println(": wait failed");
+                {
+                    CoopMutexLock serialLock(serialMutex);
+                    Serial.print(CoopTaskBase::self()->name().c_str());
+                    Serial.println(": wait failed");
+                }
                 yield();
                 continue;
             }
-            Serial.print(CoopTask<>::self()->name());
-            Serial.print(" (");
-            Serial.print(++count);
-            Serial.println("x)");
-            printReport();
+            {
+                CoopMutexLock serialLock(serialMutex);
+                Serial.print(CoopTask<>::self()->name());
+                Serial.print(" (");
+                Serial.print(++count);
+                Serial.println("x)");
+                printReport();
+            }
             yield();
             reportSema.setval(0);
         }
@@ -376,8 +398,6 @@ void setup()
 #endif
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
-    Serial.println("Scheduler test");
-
     reportCnt = 0;
     start = micros();
 
@@ -425,6 +445,7 @@ void loop()
             if (++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
         }
     }
+#ifdef ESP32
     if (minDelay)
     {
         vTaskSuspend(yieldGuardHandle);
@@ -432,11 +453,16 @@ void loop()
         vTaskResume(yieldGuardHandle);
     }
 #endif
+#endif
 
     // taskReport sleeps on first run(), and after each report.
     // It resets reportCnt to 0 on each report.
     ++reportCnt;
-    if (reportCnt > 8000)
+#ifdef ESP32
+    if (reportCnt > 5000)
+#else
+    if (reportCnt > 200000)
+#endif
     {
         reportSema.post();
     }

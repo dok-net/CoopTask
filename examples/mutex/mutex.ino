@@ -8,6 +8,7 @@
 #include <CoopSemaphore.h>
 #include <CoopMutex.h>
 
+CoopMutex serialMutex;
 CoopMutex mutex;
 CoopTaskBase* hasMutex(nullptr);
 
@@ -15,6 +16,7 @@ void haveMutex()
 {
     if (hasMutex)
     {
+        CoopMutexLock serialLock(serialMutex);
         Serial.print(CoopTaskBase::self()->name());
         Serial.print(" called haveMutex, despite ");
         Serial.print(hasMutex->name());
@@ -28,6 +30,7 @@ void yieldMutex()
 {
     if (hasMutex != CoopTaskBase::self())
     {
+        CoopMutexLock serialLock(serialMutex);
         Serial.print(CoopTaskBase::self()->name());
         Serial.println(" called yieldMutex, but no task currently has the mutex.");
         return;
@@ -39,7 +42,9 @@ CoopTask<int>* firstTask;
 CoopTask<int>* secondTask;
 CoopTask<int>* thirdTask;
 
+#ifdef ESP32
 TaskHandle_t yieldGuardHandle;
+#endif
 
 void setup() {
 #ifdef ESP8266
@@ -47,32 +52,47 @@ void setup() {
 #else
     Serial.begin(115200);
 #endif
+    while (!Serial) {}
+    delay(500);
     Serial.println("Mutex test");
 
     firstTask = scheduleTask("first", []()
         {
-            Serial.print(CoopTaskBase::self()->name());
-            Serial.println(" starts");
+            {
+                CoopMutexLock serialLock(serialMutex);
+                Serial.print(CoopTaskBase::self()->name());
+                Serial.println(" starts");
+            }
             for (int i = 0; i < 30; ++i)
             {
                 {
+                    CoopMutexLock serialLock(serialMutex);
                     Serial.print(CoopTaskBase::self()->name());
                     Serial.println(" locks mutex");
+                }
+                {
                     CoopMutexLock lock(mutex);
                     if (!lock) {
+                        CoopMutexLock serialLock(serialMutex);
                         Serial.print("failed to lock mutex in ");
                         Serial.println(CoopTaskBase::self()->name());
                     }
                     haveMutex();
-                    Serial.print(CoopTaskBase::self()->name());
-                    Serial.println(" has mutex");
+                    {
+                        CoopMutexLock serialLock(serialMutex);
+                        Serial.print(CoopTaskBase::self()->name());
+                        Serial.println(" has mutex");
+                    }
                     yield();
                     yieldMutex();
                 }
-                Serial.print(CoopTaskBase::self()->name());
-                Serial.print(" runs (");
-                Serial.print(i);
-                Serial.println(")");
+                {
+                    CoopMutexLock serialLock(serialMutex);
+                    Serial.print(CoopTaskBase::self()->name());
+                    Serial.print(" runs (");
+                    Serial.print(i);
+                    Serial.println(")");
+                }
                 yield();
             }
             return 0;
@@ -85,28 +105,41 @@ void setup() {
     if (!firstTask) Serial.println("firstTask not scheduled");
     secondTask = scheduleTask("second", []()
         {
-            Serial.print(CoopTaskBase::self()->name());
-            Serial.println(" starts");
+            {
+                CoopMutexLock serialLock(serialMutex);
+                Serial.print(CoopTaskBase::self()->name());
+                Serial.println(" starts");
+            }
             for (int i = 0; i < 30; ++i)
             {
                 {
+                    CoopMutexLock serialLock(serialMutex);
                     Serial.print(CoopTaskBase::self()->name());
                     Serial.println(" locks mutex");
+                }
+                {
                     CoopMutexLock lock(mutex);
                     if (!lock) {
+                        CoopMutexLock serialLock(serialMutex);
                         Serial.print("failed to lock mutex in ");
                         Serial.println(CoopTaskBase::self()->name());
                     }
                     haveMutex();
-                    Serial.print(CoopTaskBase::self()->name());
-                    Serial.println(" has mutex");
+                    {
+                        CoopMutexLock serialLock(serialMutex);
+                        Serial.print(CoopTaskBase::self()->name());
+                        Serial.println(" has mutex");
+                    }
                     yield();
                     yieldMutex();
                 }
-                Serial.print(CoopTaskBase::self()->name());
-                Serial.print(" runs (");
-                Serial.print(i);
-                Serial.println(")");
+                {
+                    CoopMutexLock serialLock(serialMutex);
+                    Serial.print(CoopTaskBase::self()->name());
+                    Serial.print(" runs (");
+                    Serial.print(i);
+                    Serial.println(")");
+                }
                 yield();
             }
             return 0;
@@ -119,36 +152,52 @@ void setup() {
     if (!secondTask) Serial.println("secondTask not scheduled");
     thirdTask = scheduleTask("third", []()
         {
-            Serial.print(CoopTaskBase::self()->name());
-            Serial.println(" starts");
+            {
+                CoopMutexLock serialLock(serialMutex);
+                Serial.print(CoopTaskBase::self()->name());
+                Serial.println(" starts");
+            }
             for (int i = 0; i < 10; ++i)
             {
                 {
+                    CoopMutexLock serialLock(serialMutex);
                     Serial.print(CoopTaskBase::self()->name());
                     Serial.println(" locks mutex");
+                }
+                {
                     CoopMutexLock lock(mutex);
                     if (!lock) {
+                        CoopMutexLock serialLock(serialMutex);
                         Serial.print("failed to lock mutex in ");
                         Serial.println(CoopTaskBase::self()->name());
                     }
                     haveMutex();
-                    Serial.print(CoopTaskBase::self()->name());
-                    Serial.println(" has mutex");
+                    {
+                        CoopMutexLock serialLock(serialMutex);
+                        Serial.print(CoopTaskBase::self()->name());
+                        Serial.println(" has mutex");
+                    }
                     yield();
                     yieldMutex();
                 }
-                Serial.print(CoopTaskBase::self()->name());
-                Serial.print(" runs (");
-                Serial.print(i);
-                Serial.println(")");
+                {
+                    CoopMutexLock serialLock(serialMutex);
+                    Serial.print(CoopTaskBase::self()->name());
+                    Serial.print(" runs (");
+                    Serial.print(i);
+                    Serial.println(")");
+                }
                 yield();
             }
             for (int i = 0; i < 10; ++i)
             {
-                Serial.print(CoopTaskBase::self()->name());
-                Serial.print(" still runs (");
-                Serial.print(i);
-                Serial.println(")");
+                {
+                    CoopMutexLock serialLock(serialMutex);
+                    Serial.print(CoopTaskBase::self()->name());
+                    Serial.print(" still runs (");
+                    Serial.print(i);
+                    Serial.println(")");
+                }
                 yield();
             }
             return 0;
@@ -180,7 +229,7 @@ void loop() {
     uint32_t minDelay = ~0UL;
     for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
-        auto task = CoopTaskBase::getRunnableTasks()[i].load();
+        auto task = static_cast<CoopTask<>*>(CoopTaskBase::getRunnableTasks()[i].load());
         if (task)
         {
             auto runResult = task->run();
@@ -194,11 +243,13 @@ void loop() {
             if (++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
         }
     }
+#ifdef ESP32
     if (minDelay)
     {
         vTaskSuspend(yieldGuardHandle);
         vTaskDelay(1);
         vTaskResume(yieldGuardHandle);
     }
+#endif
 #endif
 }
