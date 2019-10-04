@@ -84,9 +84,9 @@ int main()
     {
         uint32_t taskCount = 0;
         uint32_t minDelay = ~0UL;
-        for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
+        for (int i = 0; i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
         {
-            auto task = CoopTaskBase::getRunnableTasks()[i].load();
+            auto task = BasicCoopTask<>::getRunnableTasks()[i].load();
             if (task)
             {
                 auto runResult = task->run();
@@ -97,7 +97,7 @@ int main()
                     return 0;
                 }
                 if (task->delayed() && runResult < minDelay) minDelay = runResult;
-                if (++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
+                if (++taskCount >= BasicCoopTask<>::getRunnableTasksCount()) break;
             }
         }
     }

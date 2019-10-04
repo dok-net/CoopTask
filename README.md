@@ -67,3 +67,75 @@ void loop()
 //#endif
 }
 ```
+
+## Additional Arduino-ESP32 specifics
+The ESP32 runs the Arduino API on top of the FreeRTOS real-time operating system.
+This OS has all the capabilities for real-time programming and offers prioritized,
+preemptive multitasking. The purpose of CoopTask on the other hand is to take
+the complexity out of multi-threaded/tasked programming, and offers a cooperative
+multi-tasking scheme instead.
+
+Arduino-ESP32 has the necessary support for CoopTask beginning with
+commit-ish c2b3f2d, dated Oct 4 2019, in Github master branch post release 1.4.0.
+
+For Arduino sketches, and the libraries used in these, that never use the global
+Arduino `delay()`, don't make use of FreeRTOS `vTaskDelay()`, and implement
+delays only ever using the CoopTask metaphor `CoopTaskBase::delay()`, CoopTask
+doesn't require anything specific for the ESP32.
+
+If there is any chance that the Arduino or FreeRTOS delay gets used though,
+on the ESP32 it is necessary to prevent unsolicited preemptive concurrency
+and control CPU time for the idle task.
+
+See the examples/mutex or examples/blinkbuttonandweb for sample code. Basically:
+
+``
+#ifdef ESP32
+TaskHandle_t yieldGuardHandle;
+#endif
+
+void setup()
+{
+// ...
+
+#ifdef ESP32
+    xTaskCreateUniversal([](void*)
+        {
+            for (;;)
+            {
+                vPortYield();
+            }
+        }, "YieldGuard", 8192, nullptr, 1, &yieldGuardHandle, CONFIG_ARDUINO_RUNNING_CORE);
+#endif
+}
+
+void loop() {
+#if !defined(ESP8266)
+    uint32_t taskCount = 0;
+    uint32_t minDelay = ~0UL;
+    for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
+    {
+        auto task = CoopTaskBase::getRunnableTasks()[i].load();
+        if (task)
+        {
+            auto runResult = task->run();
+            if (runResult < 0)
+            {
+            	// probably want to identify task, and inspect return value
+                // delete task;
+            }
+            if (task->delayed() && runResult < minDelay) minDelay = runResult;
+            if (++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
+        }
+    }
+#ifdef ESP32
+    if (minDelay)
+    {
+        vTaskSuspend(yieldGuardHandle);
+        vTaskDelay(1);
+        vTaskResume(yieldGuardHandle);
+    }
+#endif
+#endif
+}
+``

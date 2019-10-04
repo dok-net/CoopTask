@@ -431,18 +431,20 @@ void loop()
 #if !defined(ESP8266)
     uint32_t taskCount = 0;
     uint32_t minDelay = ~0UL;
-    for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
+    for (int i = 0; i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
     {
-        auto task = CoopTaskBase::getRunnableTasks()[i].load();
+        auto task = BasicCoopTask<>::getRunnableTasks()[i].load();
         if (task)
         {
             auto runResult = task->run();
             if (runResult < 0 && task == taskText)
             {
                 Serial.print(task->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
+                taskText = nullptr;
+                delete task;
             }
             if (task->delayed() && runResult < minDelay) minDelay = runResult;
-            if (++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
+            if (++taskCount >= BasicCoopTask<>::getRunnableTasksCount()) break;
         }
     }
 #ifdef ESP32

@@ -227,9 +227,9 @@ void loop() {
 #if !defined(ESP8266)
     uint32_t taskCount = 0;
     uint32_t minDelay = ~0UL;
-    for (int i = 0; i < CoopTaskBase::getRunnableTasks().size(); ++i)
+    for (int i = 0; i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
     {
-        auto task = static_cast<CoopTask<>*>(CoopTaskBase::getRunnableTasks()[i].load());
+        auto task = BasicCoopTask<>::getRunnableTasks()[i].load();
         if (task)
         {
             auto runResult = task->run();
@@ -240,7 +240,7 @@ void loop() {
                 delete task;
             }
             if (task->delayed() && runResult < minDelay) minDelay = runResult;
-            if (++taskCount >= CoopTaskBase::getRunnableTasksCount()) break;
+            if (++taskCount >= BasicCoopTask<>::getRunnableTasksCount()) break;
         }
     }
 #ifdef ESP32

@@ -55,6 +55,13 @@ public:
         stackAllocator.disposeStack(taskStackTop);
 #endif
     }
+    /// Every task is entered into this list by scheduleTask(). It is removed when it exits
+    /// or gets deleted.
+    static const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS>& getRunnableTasks()
+    {
+        // this is safe to do because CoopTaskBase ctor is protected. is it necessary due to non-virtual destructors.
+        return reinterpret_cast<const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS>&>(CoopTaskBase::getRunnableTasks());
+    }
 };
 
 #endif // __BasicCoopTask_h
