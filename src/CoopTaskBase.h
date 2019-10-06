@@ -113,6 +113,7 @@ protected:
     void doYield(uint32_t val) noexcept;
 
 #if defined(ESP8266)
+    static bool usingBuiltinScheduler;
     bool rescheduleTask(uint32_t repeat_us);
 #endif
     bool enrollRunnable();
@@ -158,6 +159,24 @@ public:
     /// @returns: true on success.
     bool IRAM_ATTR scheduleTask(bool wakeup = true);
 
+#ifdef ESP8266
+    /// For full transparency to all features, cyclic task scheduling, state evaluation
+    /// and running is performed in a loop implemented in user code. See the CoopTask examples for this.
+    /// This may not be required, for instance if a given number of loop tasks need to run
+    /// indefinitely without exit codes or explicit deep sleep system states.
+    /// On platforms where a scheduler exists that is suffiently capable to run CoopTasks,
+    /// calling this function switches all task creation and scheduling to use that, obviating
+    /// the need to implement a scheduling loop in user code.
+    /// The scheduler selection should be done before the first CoopTask is created, and not
+    /// changed thereafter during runtime.
+    /// By default, builtin schedulers are not used, for well-defined behavior and portability.
+    /// @param state true: The parameter default value. All subsequent scheduling of tasks is
+    /// handed to the builtin scheduler.
+    static void useBuiltinScheduler(bool state = true)
+    {
+        usingBuiltinScheduler = state;
+    }
+#endif
     /// Every task is entered into this list by scheduleTask(). It is removed when it exits
     /// or gets deleted.
     static const std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS>& getRunnableTasks()

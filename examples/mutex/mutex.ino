@@ -225,13 +225,14 @@ void setup() {
 // the loop function runs over and over again until power down or reset
 void loop() {
 #if !defined(ESP8266)
-    uint32_t taskCount = 0;
+    uint32_t taskCount = BasicCoopTask<>::getRunnableTasksCount();
     uint32_t minDelay = ~0UL;
-    for (int i = 0; i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
+    for (int i = 0; taskCount && i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
     {
         auto task = BasicCoopTask<>::getRunnableTasks()[i].load();
         if (task)
         {
+            --taskCount;
             auto runResult = task->run();
             if (runResult < 0)
             {
@@ -239,8 +240,8 @@ void loop() {
                 Serial.println(task->name());
                 delete task;
             }
-            if (task->delayed() && runResult < minDelay) minDelay = runResult;
-            if (++taskCount >= BasicCoopTask<>::getRunnableTasksCount()) break;
+            else if (task->delayed() && runResult < minDelay)
+                minDelay = runResult;
         }
     }
 #ifdef ESP32

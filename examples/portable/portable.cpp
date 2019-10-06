@@ -82,13 +82,14 @@ int main()
 
     for (;;)
     {
-        uint32_t taskCount = 0;
+        uint32_t taskCount = BasicCoopTask<>::getRunnableTasksCount();
         uint32_t minDelay = ~0UL;
-        for (int i = 0; i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
+        for (uint32_t i = 0; taskCount && i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
         {
             auto task = BasicCoopTask<>::getRunnableTasks()[i].load();
             if (task)
             {
+                --taskCount;
                 auto runResult = task->run();
                 // once: hello posts terminatorSema -> terminator sets keepBlinking = false -> blink exits -> break leaves for-loop -> program exits
                 if (runResult < 0 && task == &blink)
@@ -96,8 +97,8 @@ int main()
                     std::cerr << task->name() << " returns = " << blink.exitCode() << std::endl;
                     return 0;
                 }
-                if (task->delayed() && runResult < minDelay) minDelay = runResult;
-                if (++taskCount >= BasicCoopTask<>::getRunnableTasksCount()) break;
+                else if (task->delayed() && static_cast<uint32_t>(runResult) < minDelay)
+                    minDelay = runResult;
             }
         }
     }

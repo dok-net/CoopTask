@@ -95,6 +95,8 @@ namespace
 #endif
 
 #if defined(ESP8266)
+bool CoopTaskBase::usingBuiltinScheduler = false;
+
 bool CoopTaskBase::rescheduleTask(uint32_t repeat_us)
 {
     auto stat = run();
@@ -207,7 +209,7 @@ bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
 {
     if (!*this || !enrollRunnable()) return false;
 #if defined(ESP8266)
-    bool reschedule = sleeping();
+    bool reschedule = usingBuiltinScheduler && sleeping();
 #endif
     if (wakeup)
     {

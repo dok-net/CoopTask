@@ -42,6 +42,8 @@ constexpr auto LEDOFF = LOW;
 #define BUTTON1 0
 #endif
 
+#define USE_BUILTIN_TASK_SCHEDULER
+
 #if defined(ESP8266) || defined(ESP32)
 class Button {
 protected:
@@ -263,6 +265,11 @@ void setup()
     Serial.println("HTTP server started");
 #endif
 
+
+#if defined(ESP8266) && defined(USE_BUILTIN_TASK_SCHEDULER)
+    CoopTaskBase::useBuiltinScheduler();
+#endif
+
     pinMode(LED_BUILTIN, OUTPUT);
 
 #if defined(ESP8266) || defined(ESP32)
@@ -428,30 +435,31 @@ void setup()
 
 void loop()
 {
-#if defined(ESP8266)
+#if defined(ESP8266) && defined(USE_BUILTIN_TASK_SCHEDULER)
     if (taskText && !*taskText)
     {
         Serial.print(taskText->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
-        taskText = nullptr;
         delete taskText;
+        taskText = nullptr;
     }
 #else
-    uint32_t taskCount = 0;
+    uint32_t taskCount = BasicCoopTask<>::getRunnableTasksCount();
     uint32_t minDelay = ~0UL;
-    for (int i = 0; i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
+    for (int i = 0; taskCount && i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
     {
         auto task = BasicCoopTask<>::getRunnableTasks()[i].load();
         if (task)
         {
+            --taskCount;
             auto runResult = task->run();
-            if (runResult < 0 && task == taskText)
+            if (task == taskText && runResult < 0)
             {
                 Serial.print(task->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
+                delete taskText;
                 taskText = nullptr;
-                delete task;
             }
-            if (task->delayed() && runResult < minDelay) minDelay = runResult;
-            if (++taskCount >= BasicCoopTask<>::getRunnableTasksCount()) break;
+            else if (task->delayed() && runResult < minDelay)
+                minDelay = runResult;
         }
     }
 #ifdef ESP32
