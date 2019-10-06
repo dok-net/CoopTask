@@ -95,14 +95,14 @@ public:
     static void exit(const Result& code) noexcept { self()->_exit(code); }
 };
 
-/// A convenience function that creates a matching CoopTask for the supplied task function, with the
-/// given name and stack size, and makes it ready for scheduling.
-/// @returns: the pointer to the new CoopTask instance, or null if the creation or preparing for scheduling failed.
-template<typename Result = int> CoopTask<Result> * scheduleTask(
+/// A convenience function that creates a new CoopTask instance for the supplied task function, with the
+/// given name and stack size, and schedules it.
+/// @returns: the pointer to the new CoopTask instance, or nullptr if the creation or preparing for scheduling failed.
+template<typename Result = int> CoopTask<Result>* createCoopTask(
 #if defined(ARDUINO)
-    const String & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
+    const String& name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
 #else
-const std::string & name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
+const std::string& name, typename CoopTask<Result>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
 #endif
 {
     auto task = new CoopTask<Result>(name, func, stackSize);

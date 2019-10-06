@@ -21,7 +21,7 @@ int main()
     CoopSemaphore terminatorSema(0);
     CoopSemaphore helloSema(0);
 
-    auto& hello = *scheduleTask(std::string("hello"), [&terminatorSema, &helloSema]() noexcept
+    auto& hello = *createCoopTask(std::string("hello"), [&terminatorSema, &helloSema]() noexcept
         {
             std::cerr << "Hello" << std::endl;
             yield();
@@ -41,7 +41,7 @@ int main()
 
     bool keepBlinking = true;
 
-    auto& terminator = *scheduleTask(std::string("terminator"), [&keepBlinking, &terminatorSema]() noexcept
+    auto& terminator = *createCoopTask(std::string("terminator"), [&keepBlinking, &terminatorSema]() noexcept
         {
             if (!terminatorSema.wait()) std::cerr << "terminatorSema.wait() failed" << std::endl;
             keepBlinking = false;
@@ -49,7 +49,7 @@ int main()
         }, 0x2000);
     if (!terminator) std::cerr << terminator.name() << " CoopTask not created" << std::endl;
 
-    auto& blink = *scheduleTask<std::string>(std::string("blink"), [&keepBlinking]()
+    auto& blink = *createCoopTask<std::string>(std::string("blink"), [&keepBlinking]()
         {
             while (keepBlinking)
             {
@@ -66,7 +66,7 @@ int main()
         }, 0x2000);
     if (!blink) std::cerr << blink.name() << " CoopTask not created" << std::endl;
 
-    auto& report = *scheduleTask(std::string("report"), [&hello, &blink]() noexcept
+    auto& report = *createCoopTask(std::string("report"), [&hello, &blink]() noexcept
         {
             for (;;) {
                 delay(5000);

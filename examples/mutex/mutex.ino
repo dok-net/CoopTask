@@ -56,7 +56,7 @@ void setup() {
     delay(500);
     Serial.println("Mutex test");
 
-    firstTask = scheduleTask("first", []()
+    firstTask = createCoopTask("first", []()
         {
             {
                 CoopMutexLock serialLock(serialMutex);
@@ -102,8 +102,8 @@ void setup() {
 #else
     , 0x120);
 #endif
-    if (!firstTask) Serial.println("firstTask not scheduled");
-    secondTask = scheduleTask("second", []()
+    if (!firstTask) Serial.println("firstTask not created");
+    secondTask = createCoopTask("second", []()
         {
             {
                 CoopMutexLock serialLock(serialMutex);
@@ -149,8 +149,8 @@ void setup() {
 #else
     , 0x120);
 #endif
-    if (!secondTask) Serial.println("secondTask not scheduled");
-    thirdTask = scheduleTask("third", []()
+    if (!secondTask) Serial.println("secondTask not created");
+    thirdTask = createCoopTask("third", []()
         {
             {
                 CoopMutexLock serialLock(serialMutex);
@@ -207,7 +207,7 @@ void setup() {
 #else
     , 0x120);
 #endif
-    if (!thirdTask) Serial.println("thirdTask not scheduled");
+    if (!thirdTask) Serial.println("thirdTask not created");
 
 #ifdef ESP32
     Serial.print("Loop free stack = "); Serial.println(uxTaskGetStackHighWaterMark(NULL));
