@@ -780,3 +780,45 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 }
 
 #endif // _MSC_VER
+
+void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& reaper, const std::function<bool(uint32_t ms)>& onDelay)
+{
+#ifdef ESP32
+    static TaskHandle_t yieldGuardHandle = nullptr;
+    if (!yieldGuardHandle)
+    {
+        xTaskCreateUniversal([](void*)
+            {
+                for (;;)
+                {
+                    vPortYield();
+                }
+            }, "YieldGuard", 0x200, nullptr, 1, &yieldGuardHandle, CONFIG_ARDUINO_RUNNING_CORE);
+    }
+#endif
+
+    uint32_t taskCount = CoopTaskBase::getRunnableTasksCount();
+    uint32_t minDelay = ~0UL;
+    for (uint32_t i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
+    {
+        auto task = CoopTaskBase::getRunnableTasks()[i].load();
+        if (task)
+        {
+            --taskCount;
+            auto runResult = task->run();
+            if (runResult < 0 && reaper)
+                reaper(task);
+            else if (task->delayed() && static_cast<uint32_t>(runResult) < minDelay)
+                minDelay = runResult;
+        }
+    }
+
+    if (minDelay && (!onDelay || onDelay(minDelay)))
+    {
+#ifdef ESP32
+        vTaskSuspend(yieldGuardHandle);
+        vTaskDelay(1);
+        vTaskResume(yieldGuardHandle);
+#endif	
+    }
+}

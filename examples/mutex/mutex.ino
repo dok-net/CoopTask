@@ -42,10 +42,6 @@ CoopTask<int>* firstTask;
 CoopTask<int>* secondTask;
 CoopTask<int>* thirdTask;
 
-#ifdef ESP32
-TaskHandle_t yieldGuardHandle;
-#endif
-
 void setup() {
 #ifdef ESP8266
     Serial.begin(74880);
@@ -211,46 +207,18 @@ void setup() {
 
 #ifdef ESP32
     Serial.print("Loop free stack = "); Serial.println(uxTaskGetStackHighWaterMark(NULL));
-
-    xTaskCreateUniversal([](void*)
-        {
-            for (;;)
-            {
-                vPortYield();
-            }
-        }, "YieldGuard", 0x200, nullptr, 1, &yieldGuardHandle, CONFIG_ARDUINO_RUNNING_CORE);
 #endif
 }
 
+void taskReaper(const CoopTaskBase* const task)
+{
+    Serial.print("deleting task ");
+    Serial.println(task->name());
+    delete static_cast<const BasicCoopTask<>*>(task);
+}
+
 // the loop function runs over and over again until power down or reset
-void loop() {
-#if !defined(ESP8266)
-    uint32_t taskCount = BasicCoopTask<>::getRunnableTasksCount();
-    uint32_t minDelay = ~0UL;
-    for (int i = 0; taskCount && i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
-    {
-        auto task = BasicCoopTask<>::getRunnableTasks()[i].load();
-        if (task)
-        {
-            --taskCount;
-            auto runResult = task->run();
-            if (runResult < 0)
-            {
-                Serial.print("deleting task ");
-                Serial.println(task->name());
-                delete task;
-            }
-            else if (task->delayed() && runResult < minDelay)
-                minDelay = runResult;
-        }
-    }
-#ifdef ESP32
-    if (minDelay)
-    {
-        vTaskSuspend(yieldGuardHandle);
-        vTaskDelay(1);
-        vTaskResume(yieldGuardHandle);
-    }
-#endif
-#endif
+void loop()
+{
+    runCoopTasks(taskReaper);
 }

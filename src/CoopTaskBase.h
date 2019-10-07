@@ -241,4 +241,13 @@ inline void yield() { CoopTaskBase::yield(); }
 inline void delay(uint32_t ms) { CoopTaskBase::delay(ms); }
 #endif
 
+/// An optional convenience funtion that does all the work to cyclically perform CoopTask execution.
+/// @param reaper Function that is called once when a task exits.
+/// @param onDelay An optional function to handle a global delay greater or equal 1 millisecond, resulting
+/// from the minimum time interval for which at this time all CoopTasks are delayed.
+/// This can be used for power saving, if wake up by asynchronous events is properly considered.
+/// onDelay() returns a bool value, if true, runCoopTasks performs the default housekeeping actions
+/// in addition, otherwise it skips those.
+void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& reaper, const std::function<bool(uint32_t ms)>& onDelay = {});
+
 #endif // __CoopTaskBase_h

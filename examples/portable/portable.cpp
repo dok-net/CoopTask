@@ -80,27 +80,19 @@ int main()
         }, 0x2000);
     if (!report) std::cerr << report.name() << " CoopTask not created" << std::endl;
 
+    auto taskReaper = [&blink](const CoopTaskBase* const task)
+    {
+        // once: hello posts terminatorSema -> terminator sets keepBlinking = false -> blink exits -> break leaves for-loop -> program exits
+        if (task == &blink)
+        {
+            std::cerr << task->name() << " returns = " << blink.exitCode() << std::endl;
+            exit(0);
+        }
+    };
+
     for (;;)
     {
-        uint32_t taskCount = BasicCoopTask<>::getRunnableTasksCount();
-        uint32_t minDelay = ~0UL;
-        for (uint32_t i = 0; taskCount && i < BasicCoopTask<>::getRunnableTasks().size(); ++i)
-        {
-            auto task = BasicCoopTask<>::getRunnableTasks()[i].load();
-            if (task)
-            {
-                --taskCount;
-                auto runResult = task->run();
-                // once: hello posts terminatorSema -> terminator sets keepBlinking = false -> blink exits -> break leaves for-loop -> program exits
-                if (runResult < 0 && task == &blink)
-                {
-                    std::cerr << task->name() << " returns = " << blink.exitCode() << std::endl;
-                    return 0;
-                }
-                else if (task->delayed() && static_cast<uint32_t>(runResult) < minDelay)
-                    minDelay = runResult;
-            }
-        }
+        runCoopTasks(taskReaper);
     }
     return 0;
 }
