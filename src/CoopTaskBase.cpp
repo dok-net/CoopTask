@@ -92,6 +92,11 @@ namespace
         while (micros() - start < us) {}
     }
 }
+#elif defined(ESP8266) || defined(ESP32)
+namespace
+{
+    const static uint32_t CYCLES_PER_MS = ESP.getCpuFreqMHz() * 1000;
+}
 #endif
 
 #if defined(ESP8266)
@@ -416,7 +421,13 @@ int32_t CoopTaskBase::run()
             }
             else
             {
-                auto expired = millis() - delay_start;
+                auto expired = (ESP.getCycleCount() - delay_start) / CYCLES_PER_MS;
+                while (expired)
+                {
+                    delay_start += CYCLES_PER_MS;
+                    delay_duration -= 1;
+                    --expired;
+                }
                 if (expired < delay_duration) return delay_duration - expired;
                 sleep(false);
             }
@@ -488,7 +499,7 @@ int32_t CoopTaskBase::run()
             if (!delays.exchange(true))
             {
                 delay_ms = true;
-                delay_start = millis();
+                delay_start = ESP.getCycleCount();
                 delay_duration = 0;
             }
             break;
@@ -520,7 +531,7 @@ void CoopTaskBase::_delay(uint32_t ms) noexcept
 {
     delays.store(true);
     delay_ms = true;
-    delay_start = millis();
+    delay_start = ESP.getCycleCount();
     delay_duration = ms;
     vTaskSuspend(taskHandle);
 }
@@ -619,7 +630,25 @@ int32_t CoopTaskBase::run()
     {
         if (delay_ms)
         {
+#ifdef ESP8266
+            uint32_t expired;
+            if (usingBuiltinScheduler)
+            {
+                expired = millis() - delay_start;
+            }
+            else
+            {
+                expired = (ESP.getCycleCount() - delay_start) / CYCLES_PER_MS;
+                while (expired)
+                {
+                    delay_start += CYCLES_PER_MS;
+                    delay_duration -= 1;
+                    --expired;
+                }
+            }
+#else
             auto expired = millis() - delay_start;
+#endif
             if (expired < delay_duration) return delay_duration - expired;
         }
         else
@@ -702,7 +731,11 @@ void CoopTaskBase::doYield(uint32_t val) noexcept
 void CoopTaskBase::_delay(uint32_t ms) noexcept
 {
     delay_ms = true;
+#ifdef ESP8266
+    delay_start = usingBuiltinScheduler ? millis() : ESP.getCycleCount();
+#else
     delay_start = millis();
+#endif
     delay_duration = ms;
     // CoopTask::run() defers task for delay_duration milliseconds.
     doYield(3);

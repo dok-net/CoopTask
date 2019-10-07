@@ -104,10 +104,6 @@ protected:
     std::atomic<bool> sleeps;
     // ESP32 FreeRTOS handles delays, on this platfrom delays is always false
     std::atomic<bool> delays;
-    // true: delay_start/delay_duration are in milliseconds; false: delay_start/delay_duration are in microseconds.
-    bool delay_ms = false;
-    uint32_t delay_start = 0;
-    uint32_t delay_duration = 0;
 
     int32_t initialize();
     void doYield(uint32_t val) noexcept;
@@ -126,6 +122,11 @@ protected:
     void _delayMicroseconds(uint32_t us) noexcept;
 
 private:
+    // true: delay_start/delay_duration are in milliseconds; false: delay_start/delay_duration are in microseconds.
+    bool delay_ms = false;
+    uint32_t delay_start = 0;
+    uint32_t delay_duration = 0;
+
     taskfunction_t func;
 
 public:
