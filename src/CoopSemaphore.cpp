@@ -170,13 +170,13 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         }
         if (withDeadline)
         {
-
             if (expired >= ms)
             {
-                pendingTasks->for_each_rev_requeue([](CoopTaskBase*& task)
-                    {
-                        return task != CoopTaskBase::self();
-                    });
+                static const std::function<bool(CoopTaskBase * &task)> notSelfTask = [](CoopTaskBase*& task)
+                {
+                    return task != CoopTaskBase::self();
+                };
+                pendingTasks->for_each_rev_requeue(notSelfTask);
 #if !defined(ESP32) && defined(ARDUINO)
                 {
                     InterruptLock lock;
@@ -195,7 +195,7 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         }
         else
         {
-            yield();
+            CoopTaskBase::yield();
         }
         selfFirst = true;
     }

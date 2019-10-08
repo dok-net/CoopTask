@@ -56,10 +56,11 @@ public:
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-        pendingTasks->for_each([](CoopTaskBase*&& task)
-            {
-                task->scheduleTask(true);
-            });
+        static const std::function<void(CoopTaskBase * &&task)> scheduleAwake = [](CoopTaskBase*&& task)
+        {
+            task->scheduleTask(true);
+        };
+        pendingTasks->for_each(scheduleAwake);
         pendingTasks.reset();
     }
 
