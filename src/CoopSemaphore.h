@@ -38,6 +38,15 @@ protected:
     std::atomic<CoopTaskBase*> pendingTask0;
     std::unique_ptr<circular_queue<CoopTaskBase*>> pendingTasks;
 
+    // capture-less functions for iterators.
+    static void awakeAndSchedule(CoopTaskBase*&& task)
+    {
+        task->scheduleTask(true);
+    }
+    static bool notIsSelfTask(CoopTaskBase*& task)
+    {
+        return CoopTaskBase::self() != task;
+    }
 
     /// @param withDeadline true: the ms parameter specifies the relative timeout for a successful
     /// aquisition of the semaphore.
@@ -56,11 +65,7 @@ public:
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-        static const std::function<void(CoopTaskBase * &&task)> scheduleAwake = [](CoopTaskBase*&& task)
-        {
-            task->scheduleTask(true);
-        };
-        pendingTasks->for_each(scheduleAwake);
+        pendingTasks->for_each(awakeAndSchedule);
         pendingTasks.reset();
     }
 
