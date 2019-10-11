@@ -8,6 +8,8 @@
 #include <CoopSemaphore.h>
 #include <CoopMutex.h>
 
+#define USE_BUILTIN_TASK_SCHEDULER
+
 CoopMutex serialMutex;
 CoopMutex mutex;
 CoopTaskBase* hasMutex(nullptr);
@@ -51,6 +53,10 @@ void setup() {
     while (!Serial) {}
     delay(500);
     Serial.println("Mutex test");
+
+#if defined(ESP8266) && defined(USE_BUILTIN_TASK_SCHEDULER)
+    CoopTaskBase::useBuiltinScheduler();
+#endif
 
     firstTask = createCoopTask("first", []()
         {
@@ -220,5 +226,20 @@ void taskReaper(const CoopTaskBase* const task)
 // the loop function runs over and over again until power down or reset
 void loop()
 {
+#if defined(ESP8266) && defined(USE_BUILTIN_TASK_SCHEDULER)
+    if (firstTask && !*firstTask)
+    {
+        taskReaper(firstTask); firstTask = nullptr;
+    }
+    if (secondTask && !*secondTask)
+    {
+        taskReaper(secondTask); secondTask = nullptr;
+    }
+    if (thirdTask && !*thirdTask)
+    {
+        taskReaper(thirdTask); thirdTask = nullptr;
+    }
+#else
     runCoopTasks(taskReaper);
+#endif
 }
