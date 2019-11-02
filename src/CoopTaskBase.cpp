@@ -271,7 +271,11 @@ int32_t CoopTaskBase::run()
         if (delay_ms)
         {
             auto expired = millis() - delay_start;
-            if (expired < delay_duration) return delay_duration - expired;
+            if (expired < delay_duration)
+            {
+                auto delay_rem = delay_duration - expired;
+                return static_cast<int32_t>(delay_rem) < 0 ? DELAY_MAXINT : delay_rem;
+            }
         }
         else
         {
@@ -279,7 +283,10 @@ int32_t CoopTaskBase::run()
             if (expired < delay_duration)
             {
                 auto delay_rem = delay_duration - expired;
-                if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
+                if (delay_rem >= DELAYMICROS_THRESHOLD)
+                {
+                    return static_cast<int32_t>(delay_rem) < 0 ? DELAY_MAXINT : delay_rem;
+                }
                 ::delayMicroseconds(delay_rem);
             }
         }
@@ -310,7 +317,7 @@ int32_t CoopTaskBase::run()
         break;
     case 3:
     default:
-        return delay_duration;
+        return static_cast<int32_t>(delay_duration) < 0 ? DELAY_MAXINT : delay_duration;
         break;
     }
 }
@@ -428,7 +435,11 @@ int32_t CoopTaskBase::run()
                     delay_duration -= 1;
                     --expired;
                 }
-                if (expired < delay_duration) return delay_duration - expired;
+                if (expired < delay_duration)
+                {
+                    auto delay_rem = delay_duration - expired;
+                    return static_cast<int32_t>(delay_rem) < 0 ? DELAY_MAXINT : delay_rem;
+                }
                 sleep(false);
             }
         }
@@ -438,7 +449,10 @@ int32_t CoopTaskBase::run()
             if (expired < delay_duration)
             {
                 auto delay_rem = delay_duration - expired;
-                if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
+                if (delay_rem >= DELAYMICROS_THRESHOLD)
+                {
+                    return static_cast<int32_t>(delay_rem) < 0 ? DELAY_MAXINT : delay_rem;
+                }
                 ::delayMicroseconds(delay_rem);
             }
             sleep(false);
@@ -519,7 +533,7 @@ int32_t CoopTaskBase::run()
         delistRunnable();
         return -1;
     }
-    return delay_duration;
+    return static_cast<int32_t>(delay_duration) < 0 ? DELAY_MAXINT : delay_duration;
 }
 
 uint32_t CoopTaskBase::getFreeStack()
@@ -649,7 +663,11 @@ int32_t CoopTaskBase::run()
 #else
             auto expired = millis() - delay_start;
 #endif
-            if (expired < delay_duration) return delay_duration - expired;
+            if (expired < delay_duration)
+            {
+                auto delay_rem = delay_duration - expired;
+                return static_cast<int32_t>(delay_rem) < 0 ? DELAY_MAXINT : delay_rem;
+            }
         }
         else
         {
@@ -657,7 +675,10 @@ int32_t CoopTaskBase::run()
             if (expired < delay_duration)
             {
                 auto delay_rem = delay_duration - expired;
-                if (delay_rem >= DELAYMICROS_THRESHOLD) return delay_rem;
+                if (delay_rem >= DELAYMICROS_THRESHOLD)
+                {
+                    return static_cast<int32_t>(delay_rem) < 0 ? DELAY_MAXINT : delay_rem;
+                }
                 ::delayMicroseconds(delay_rem);
             }
         }
@@ -703,7 +724,7 @@ int32_t CoopTaskBase::run()
         break;
     case 3:
     default:
-        return delay_duration;
+        return static_cast<int32_t>(delay_duration) < 0 ? DELAY_MAXINT : delay_duration;
         break;
     }
 }
