@@ -639,10 +639,10 @@ int32_t CoopTaskBase::run()
             else
             {
                 expired = (ESP.getCycleCount() - delay_start) / CYCLES_PER_MS;
-                while (expired)
+                while (expired && delay_duration)
                 {
                     delay_start += CYCLES_PER_MS;
-                    delay_duration -= 1;
+                    --delay_duration;
                     --expired;
                 }
             }
