@@ -24,10 +24,32 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 class CoopTaskStackAllocator
 {
-public:
 #if !defined(_MSC_VER) && !defined(ESP32)
+public:
     static char* allocateStack(uint32_t stackSize);
     static void disposeStack(char* stackTop) { delete[] stackTop; }
+#endif
+};
+
+class CoopTaskStackAllocatorFromLoopBase
+{
+#if (defined(ARDUINO) && !defined(ESP32)) || defined(__GNUC__)
+protected:
+    static char* allocateStack(uint32_t loopReserve, uint32_t stackSize);
+#endif
+};
+
+template<uint32_t LoopReserve = (CoopTaskBase::DEFAULTTASKSTACKSIZE / 2)>
+class CoopTaskStackAllocatorFromLoop : public CoopTaskStackAllocatorFromLoopBase
+{
+#if (defined(ARDUINO) && !defined(ESP32)) || defined(__GNUC__)
+public:
+    static char* allocateStack(uint32_t stackSize)
+    {
+        return CoopTaskStackAllocatorFromLoopBase::allocateStack(LoopReserve, stackSize);
+    }
+
+    static void disposeStack(char* stackTop) { }
 #endif
 };
 

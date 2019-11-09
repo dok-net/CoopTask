@@ -68,6 +68,27 @@ The second callback, ``onDelay``, is called after each scheduling rountrip with 
 total minimum delay (can be zero) of all managed tasks. A use scenario for this
 is to put the MCU into a power saving sleep mode for the given duration.
 
+## Using Arduino or Linux default loop stack space for CoopTask
+Given that CoopTasks are scheduled from the Arduino default ``loop()`` or the
+``main()`` function on Linux, any code in these functions is non-cooperative.
+This is great for incompatible sketches or libraries, but otherwise puts the
+memory of that main stack to waste. It is therefore good practice to allocate
+the local stack for a single, infinitely running, CoopTask on the main stack.
+Reserve enough stack to remain for ``loop()`` internals. In its most simple
+form, borrowing from the example above, where taskBlink meets the requirement
+of never returning, a CoopTask that uses the default stack space is created
+like so:
+
+```
+#if defined(ESP8266) || defined(ESP32)
+    taskBlink = createCoopTask<int, CoopTaskStackAllocatorFromLoop<>>(
+        F("Blink"), loopBlink, 0x240);
+#else
+    taskBlink = createCoopTask<int, CoopTaskStackAllocatorFromLoop<>>(
+        F("Blink"), loopBlink, 0x40);
+#endif
+```
+
 ## ESP8266 Core For Arduino specifics
 ESP8266 Core For Arduino release 2.6.0 and later include all support for this
 release of CoopTask.

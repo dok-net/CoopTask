@@ -158,7 +158,7 @@ void handleNotFound() {
 #if defined(ESP8266) || defined(ESP32)
 CoopTask<>* taskButton;
 #endif
-CoopTask<>* taskBlink;
+CoopTask<uint32_t, CoopTaskStackAllocatorFromLoop<>>* taskBlink;
 CoopTask<uint32_t>* taskText;
 CoopTask<>* taskReport0;
 CoopTask<>* taskReport1;
@@ -280,12 +280,13 @@ void setup()
     if (!*taskButton) Serial.printf("CoopTask %s out of stack\n", taskButton->name().c_str());
 #endif
 
+    taskBlink = new CoopTask<uint32_t, CoopTaskStackAllocatorFromLoop<>>(F("Blink"), loopBlink,
 #if defined(ESP8266)
-    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x400);
+        0x400);
 #elif defined(ESP32)
-    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x540);
+        0x540);
 #else
-    taskBlink = new CoopTask<>(F("Blink"), loopBlink, 0x70);
+        0x70);
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 

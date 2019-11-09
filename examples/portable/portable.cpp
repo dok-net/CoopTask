@@ -8,7 +8,7 @@
 #include "CoopSemaphore.h"
 #include "CoopMutex.h"
 
-void printStackReport(BasicCoopTask<>& task)
+template<typename StackAllocator> void printStackReport(BasicCoopTask<StackAllocator>& task)
 {
     if (!task) return;
     std::cerr << task.name().c_str() << " free stack = " << task.getFreeStack() << std::endl;
@@ -49,7 +49,7 @@ int main()
         }, 0x2000);
     if (!terminator) std::cerr << terminator.name() << " CoopTask not created" << std::endl;
 
-    auto& blink = *createCoopTask<std::string>(std::string("blink"), [&keepBlinking]()
+    auto& blink = *createCoopTask<std::string, CoopTaskStackAllocatorFromLoop<>>(std::string("blink"), [&keepBlinking]()
         {
             while (keepBlinking)
             {

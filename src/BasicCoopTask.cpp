@@ -19,6 +19,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "BasicCoopTask.h"
 
+#if defined(ARDUINO) && !defined(ESP32)
+#include <alloca.h>
+#endif
+
 #if !defined(_MSC_VER) && !defined(ESP32)
 
 char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
@@ -36,3 +40,18 @@ char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
 }
 
 #endif // !defined(_MSC_VER) && !defined(ESP32)
+
+#if (defined(ARDUINO) && !defined(ESP32)) || defined(__GNUC__)
+
+char* CoopTaskStackAllocatorFromLoopBase::allocateStack(uint32_t loopReserve, uint32_t stackSize)
+{
+    char* bp = static_cast<char*>(alloca(loopReserve));
+    char* stackTop = nullptr;
+    if (stackSize <= CoopTaskBase::MAXSTACKSPACE - 2 * sizeof(CoopTaskBase::STACKCOOKIE))
+    {
+        stackTop = bp - (stackSize + 2 * sizeof(CoopTaskBase::STACKCOOKIE));
+    }
+    return stackTop;
+}
+
+#endif // (defined(ARDUINO) && !defined(ESP32)) || defined(__GNUC__)
