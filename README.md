@@ -68,7 +68,11 @@ The second callback, ``onDelay``, is called after each scheduling rountrip with 
 total minimum delay (can be zero) of all managed tasks. A use scenario for this
 is to put the MCU into a power saving sleep mode for the given duration.
 
-## Additional Arduino-ESP32 specifics
+## ESP8266 Core For Arduino specifics
+ESP8266 Core For Arduino release 2.6.0 and later include all support for this
+release of CoopTask.
+
+## Arduino-ESP32 specifics
 The ESP32 runs the Arduino API on top of the FreeRTOS real-time operating system.
 This OS has all the capabilities for real-time programming and offers prioritized,
 preemptive multitasking. The purpose of CoopTask on the other hand is to take
