@@ -630,8 +630,6 @@ int32_t CoopTaskBase::initialize()
     func();
     self()->_exit();
     cont = false;
-    delete[] taskStackTop;
-    taskStackTop = nullptr;
     delistRunnable();
     return -1;
 }
@@ -711,8 +709,6 @@ int32_t CoopTaskBase::run()
         delays.store(delays.load() || (val > 2));
     }
     if (!cont) {
-        delete[] taskStackTop;
-        taskStackTop = nullptr;
         delistRunnable();
         return -1;
     }
