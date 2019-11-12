@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 class CoopTaskStackAllocator
 {
-#if !defined(_MSC_VER) && !defined(ESP32)
+#if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 public:
     static char* allocateStack(uint32_t stackSize);
     static void disposeStack(char* stackTop) { delete[] stackTop; }
@@ -33,7 +33,7 @@ public:
 
 class CoopTaskStackAllocatorFromLoopBase
 {
-#if (defined(ARDUINO) && !defined(ESP32)) || defined(__GNUC__)
+#if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 protected:
     static char* allocateStack(uint32_t loopReserve, uint32_t stackSize);
 #endif
@@ -42,7 +42,7 @@ protected:
 template<uint32_t LoopReserve = (CoopTaskBase::DEFAULTTASKSTACKSIZE / 2)>
 class CoopTaskStackAllocatorFromLoop : public CoopTaskStackAllocatorFromLoopBase
 {
-#if (defined(ARDUINO) && !defined(ESP32)) || defined(__GNUC__)
+#if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 public:
     static char* allocateStack(uint32_t stackSize)
     {
@@ -65,7 +65,7 @@ public:
 #endif
         CoopTaskBase(name, _func, stackSize)
     {
-#if !defined(_MSC_VER) && !defined(ESP32)
+#if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
         taskStackTop = stackAllocator.allocateStack(stackSize);
 #endif
     }
@@ -73,7 +73,7 @@ public:
     BasicCoopTask& operator=(const BasicCoopTask&) = delete;
     ~BasicCoopTask()
     {
-#if !defined(_MSC_VER) && !defined(ESP32)
+#if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
         stackAllocator.disposeStack(taskStackTop);
 #endif
     }

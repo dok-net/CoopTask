@@ -19,11 +19,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "BasicCoopTask.h"
 
-#if defined(ARDUINO) && !defined(ESP32)
+#if defined(ARDUINO) && !defined(ESP32_FREERTOS)
 #include <alloca.h>
 #endif
 
-#if !defined(_MSC_VER) && !defined(ESP32)
+#if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 
 char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
 {
@@ -39,9 +39,9 @@ char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
     return stackTop;
 }
 
-#endif // !defined(_MSC_VER) && !defined(ESP32)
+#endif // !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 
-#if (defined(ARDUINO) && !defined(ESP32)) || defined(__GNUC__)
+#if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 
 char* CoopTaskStackAllocatorFromLoopBase::allocateStack(uint32_t loopReserve, uint32_t stackSize)
 {
@@ -54,4 +54,4 @@ char* CoopTaskStackAllocatorFromLoopBase::allocateStack(uint32_t loopReserve, ui
     return stackTop;
 }
 
-#endif // (defined(ARDUINO) && !defined(ESP32)) || defined(__GNUC__)
+#endif // (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)

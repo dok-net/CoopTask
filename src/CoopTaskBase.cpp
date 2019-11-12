@@ -51,6 +51,7 @@ extern "C" {
         if (self) CoopTaskBase::yield(self);
         else __yield();
     }
+
 #elif defined(ARDUINO)
     void yield()
     {
@@ -67,7 +68,16 @@ extern "C" {
         if (self) CoopTaskBase::delay(self, ms);
         else __delay(ms);
     }
-#endif
+#elif defined(ESP32) && !defined(ESP32_FREERTOS)
+    void __delay(uint32_t ms);
+
+    void delay(uint32_t ms)
+    {
+        auto self = CoopTaskBase::self();
+        if (self) CoopTaskBase::delay(self, ms);
+        else __delay(ms);
+    }
+#endif // ESP32_FREERTOS
 }
 
 std::array< std::atomic<CoopTaskBase* >, CoopTaskBase::MAXNUMBERCOOPTASKS> CoopTaskBase::runnableTasks{};
@@ -381,7 +391,7 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
     }
 }
 
-#elif defined(ESP32)
+#elif defined(ESP32_FREERTOS)
 
 CoopTaskBase::~CoopTaskBase()
 {
@@ -642,13 +652,15 @@ int32_t CoopTaskBase::run()
     {
         if (delay_ms)
         {
-#ifdef ESP8266
+#if defined(ESP8266) || defined(ESP32)
             uint32_t expired;
+#ifdef ESP8266
             if (usingBuiltinScheduler)
             {
                 expired = millis() - delay_start;
             }
             else
+#endif
             {
                 expired = (ESP.getCycleCount() - delay_start) / CYCLES_PER_MS;
                 while (expired && delay_duration)
@@ -750,6 +762,8 @@ void CoopTaskBase::_delay(uint32_t ms) noexcept
     delay_ms = true;
 #ifdef ESP8266
     delay_start = usingBuiltinScheduler ? millis() : ESP.getCycleCount();
+#elif ESP32
+    delay_start = ESP.getCycleCount();
 #else
     delay_start = millis();
 #endif
@@ -800,7 +814,7 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 
 void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& reaper, const std::function<bool(uint32_t ms)>& onDelay)
 {
-#ifdef ESP32
+#ifdef ESP32_FREERTOS
     static TaskHandle_t yieldGuardHandle = nullptr;
     if (!yieldGuardHandle)
     {
@@ -832,7 +846,7 @@ void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& rea
 
     if (minDelay && (!onDelay || onDelay(minDelay)))
     {
-#ifdef ESP32
+#ifdef ESP32_FREERTOS
         vTaskSuspend(yieldGuardHandle);
         vTaskDelay(1);
         vTaskResume(yieldGuardHandle);

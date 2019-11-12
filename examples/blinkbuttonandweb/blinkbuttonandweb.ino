@@ -448,7 +448,7 @@ void loop()
     // taskReport sleeps on first run(), and after each report.
     // It resets reportCnt to 0 on each report.
     ++reportCnt;
-#ifdef ESP32
+#ifdef ESP32_FREERTOS
     if (reportCnt > 5000)
 #else
     if (reportCnt > 200000)

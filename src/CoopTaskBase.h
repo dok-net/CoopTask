@@ -20,6 +20,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __CoopTaskBase_h
 #define __CoopTaskBase_h
 
+#ifdef ESP32
+#define ESP32_FREERTOS
+#endif
+
 #if defined(ESP8266) || defined(ESP32)
 #include <functional>
 #include <array>
@@ -88,7 +92,7 @@ protected:
     LPVOID taskFiber = nullptr;
     int val = 0;
     static void __stdcall taskFiberFunc(void* self);
-#elif defined(ESP32)
+#elif defined(ESP32_FREERTOS)
     TaskHandle_t taskHandle = nullptr;
     static void taskFunc(void* _self);
 #else
@@ -103,7 +107,7 @@ protected:
     bool init = false;
     bool cont = true;
     std::atomic<bool> sleeps;
-    // ESP32 FreeRTOS handles delays, on this platfrom delays is always false
+    // ESP32 FreeRTOS (#define ESP32_FREERTOS) handles delays, on this platfrom delays is always false
     std::atomic<bool> delays;
 
     int32_t initialize();
@@ -151,7 +155,7 @@ public:
 
     /// @returns: true if the CoopTask object is ready to run, including stack allocation.
     ///           false if either initialization has failed, or the task has exited().
-#if !defined(_MSC_VER) && !defined(ESP32)
+#if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
     operator bool() noexcept { return cont && taskStackTop; }
 #else
     operator bool() noexcept { return cont; }
@@ -205,7 +209,7 @@ public:
     /// false: clears the sleeping and delay state of the task.
     void IRAM_ATTR sleep(const bool state) noexcept;
 
-#ifdef ESP32
+#ifdef ESP32_FREERTOS
     /// @returns: a pointer to the CoopTask instance that is running. nullptr if not called from a CoopTask function (running() == false).
     static CoopTaskBase* self() noexcept;
 #else
