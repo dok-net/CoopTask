@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 template<typename Result = int, class StackAllocator = CoopTaskStackAllocator> class CoopTask : public BasicCoopTask<StackAllocator>
 {
 public:
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+#if defined(ESP8266) || !defined(ARDUINO)
     using taskfunction_t = std::function< Result() >;
 #else
     using taskfunction_t = Result(*)();

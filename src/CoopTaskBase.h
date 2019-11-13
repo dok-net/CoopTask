@@ -25,7 +25,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #if defined(ESP8266) || defined(ESP32)
+#ifndef ESP32
 #include <functional>
+#endif // ESP32
 #include <array>
 #include <memory>
 #include <csetjmp>
@@ -63,7 +65,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 class CoopTaskBase
 {
 protected:
+#if defined(ESP8266) || !defined(ARDUINO)
     using taskfunction_t = std::function< void() noexcept >;
+#else
+    using taskfunction_t = void(*)() noexcept;
+#endif
 
 #ifdef ARDUINO
     CoopTaskBase(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
@@ -253,6 +259,10 @@ inline void delay(uint32_t ms) { CoopTaskBase::delay(ms); }
 /// This can be used for power saving, if wake up by asynchronous events is properly considered.
 /// onDelay() returns a bool value, if true, runCoopTasks performs the default housekeeping actions
 /// in addition, otherwise it skips those.
+#if defined(ESP8266) || !defined(ARDUINO)
 void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& reaper, const std::function<bool(uint32_t ms)>& onDelay = {});
-
+#else
+void runCoopTasks(void(*reaper)(const CoopTaskBase* const task), bool(*onDelay)(uint32_t ms) = nullptr);
+#endif
+ 
 #endif // __CoopTaskBase_h

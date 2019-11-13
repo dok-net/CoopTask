@@ -28,7 +28,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <atomic>
 #include <memory>
 #include <algorithm>
+#ifndef ESP32
 #include <functional>
+#endif // ESP32
 using std::min;
 #else
 #include "ghostl.h"
@@ -204,10 +206,10 @@ public:
         @brief	Iterate over and remove each available element from queue,
                 calling back fun with an rvalue reference of every single element.
     */
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+#if defined(ESP8266) || !defined(ARDUINO)
     void for_each(const std::function<void(T&&)>& fun);
 #else
-    void for_each(std::function<void(T&&)> fun);
+    void for_each(void(*fun)(T&&));
 #endif
 
     /*!
@@ -216,10 +218,10 @@ public:
                 Requeuing is dependent on the return boolean of the callback function. If it
                 returns true, the requeue occurs.
     */
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+#if defined(ESP8266) || !defined(ARDUINO)
     bool for_each_rev_requeue(const std::function<bool(T&)>& fun);
 #else
-    bool for_each_rev_requeue(std::function<bool(T&)> fun);
+    bool for_each_rev_requeue(bool(*fun)(T&));
 #endif
 
 protected:
@@ -351,10 +353,10 @@ size_t circular_queue<T>::pop_n(T* buffer, size_t size) {
 #endif
 
 template< typename T >
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+#if defined(ESP8266) || !defined(ARDUINO)
 void circular_queue<T>::for_each(const std::function<void(T&&)>& fun)
 #else
-void circular_queue<T>::for_each(std::function<void(T&&)> fun)
+void circular_queue<T>::for_each(void(*fun)(T&&))
 #endif
 {
     auto outPos = m_outPos.load(std::memory_order_acquire);
@@ -370,10 +372,10 @@ void circular_queue<T>::for_each(std::function<void(T&&)> fun)
 }
 
 template< typename T >
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+#if defined(ESP8266) || !defined(ARDUINO)
 bool circular_queue<T>::for_each_rev_requeue(const std::function<bool(T&)>& fun)
 #else
-bool circular_queue<T>::for_each_rev_requeue(std::function<bool(T&)> fun)
+bool circular_queue<T>::for_each_rev_requeue(bool(*fun)(T&))
 #endif
 {
     auto inPos0 = circular_queue<T>::m_inPos.load(std::memory_order_acquire);

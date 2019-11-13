@@ -136,7 +136,11 @@ public:
                 Requeuing is dependent on the return boolean of the callback function. If it
                 returns true, the requeue occurs.
     */
+#if defined(ESP8266) || !defined(ARDUINO)
     bool for_each_requeue(const std::function<bool(T&)>& fun);
+#else
+    bool for_each_requeue(bool(*fun)(T&));
+#endif
 
 #ifndef ESP8266
 protected:
@@ -165,7 +169,11 @@ T& circular_queue_mp<T>::pop_requeue()
 }
 
 template< typename T >
+#if defined(ESP8266) || !defined(ARDUINO)
 bool circular_queue_mp<T>::for_each_requeue(const std::function<bool(T&)>& fun)
+#else
+bool circular_queue_mp<T>::for_each_requeue(bool(*fun)(T&))
+#endif
 {
     auto inPos0 = circular_queue<T>::m_inPos.load(std::memory_order_acquire);
     auto outPos = circular_queue<T>::m_outPos.load(std::memory_order_relaxed);

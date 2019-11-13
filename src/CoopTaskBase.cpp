@@ -812,7 +812,11 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 
 #endif // _MSC_VER
 
+#if defined(ESP8266) || !defined(ARDUINO)
 void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& reaper, const std::function<bool(uint32_t ms)>& onDelay)
+#else
+void runCoopTasks(void(*reaper)(const CoopTaskBase* const task), bool(*onDelay)(uint32_t ms))
+#endif
 {
 #ifdef ESP32_FREERTOS
     static TaskHandle_t yieldGuardHandle = nullptr;

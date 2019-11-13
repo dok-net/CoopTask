@@ -73,8 +73,6 @@ namespace std
     private:
         pointer ptr;
     };
-
-    template< typename T > using function = T*;
 }
 
 #endif // __ghostl_h
