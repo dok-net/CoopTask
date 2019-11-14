@@ -105,7 +105,7 @@ namespace
 #elif defined(ESP8266) || defined(ESP32)
 namespace
 {
-    const static uint32_t CYCLES_PER_MS = ESP.getCpuFreqMHz() * 1000;
+    static const uint32_t CYCLES_PER_MS = ESP.getCpuFreqMHz() * 1000;
 }
 #endif
 
@@ -830,10 +830,21 @@ void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& rea
     }
 #endif
 
+#if defined(ESP8266) || defined(ESP32)
+    static const uint32_t yieldPeriod = 100 * CYCLES_PER_MS;
+    uint32_t yieldIntvl = ESP.getCycleCount();
+#endif
     uint32_t taskCount = CoopTaskBase::getRunnableTasksCount();
     uint32_t minDelay = ~0UL;
     for (uint32_t i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
+#if defined(ESP8266) || defined(ESP32)
+        if (ESP.getCycleCount() - yieldIntvl > yieldPeriod)
+        {
+            yield();
+            yieldIntvl += yieldPeriod;
+        }
+#endif
         auto task = CoopTaskBase::getRunnableTasks()[i].load();
         if (task)
         {
