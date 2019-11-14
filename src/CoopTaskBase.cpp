@@ -439,10 +439,10 @@ int32_t CoopTaskBase::run()
             else
             {
                 auto expired = (ESP.getCycleCount() - delay_start) / CYCLES_PER_MS;
-                while (expired)
+                while (expired && delay_duration)
                 {
                     delay_start += CYCLES_PER_MS;
-                    delay_duration -= 1;
+                    --delay_duration;
                     --expired;
                 }
                 if (expired < delay_duration)
@@ -450,7 +450,8 @@ int32_t CoopTaskBase::run()
                     auto delay_rem = delay_duration - expired;
                     return static_cast<int32_t>(delay_rem) < 0 ? DELAY_MAXINT : delay_rem;
                 }
-                sleep(false);
+                delays.store(false);
+                delay_duration = 0;
             }
         }
         else
@@ -465,7 +466,8 @@ int32_t CoopTaskBase::run()
                 }
                 ::delayMicroseconds(delay_rem);
             }
-            sleep(false);
+            delays.store(false);
+            delay_duration = 0;
         }
     }
 
