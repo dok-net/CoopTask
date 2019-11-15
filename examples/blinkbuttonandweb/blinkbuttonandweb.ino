@@ -36,6 +36,7 @@ constexpr auto LEDOFF = LOW;
 
 #if defined(ESP32)
 #define BUTTON1 17
+//#define BUTTON1 GPIO_NUM_27
 #elif defined(ARDUINO_ESP8266_WEMOS_D1MINI)
 #define BUTTON1 D3
 #else
@@ -178,18 +179,17 @@ void printStackReport(CoopTaskBase* task)
     Serial.println(task->getFreeStack());
 }
 
-uint32_t reportCnt;
+uint32_t iterations = 0;
 uint32_t start;
 
 // to demonstrate that yield and delay work in subroutines
 void printReport()
 {
     //CoopTask<>::delayMicroseconds(4000000);
-    Serial.print("Loop latency: ");
-    if (reportCnt)
+    Serial.print("cycle period/us = ");
+    if (iterations)
     {
-        Serial.print((micros() - start) / reportCnt);
-        Serial.println("us");
+        Serial.println(1.0F * (micros() - start) / iterations);
     }
     else
     {
@@ -205,8 +205,7 @@ void printReport()
     printStackReport(taskWeb);
 #endif
 
-    reportCnt = 0;
-    start = micros();
+    iterations = 0;
 };
 
 class RAIITest
@@ -402,9 +401,6 @@ void setup()
 #endif
     if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
 
-    reportCnt = 0;
-    start = micros();
-
     if (!taskButton->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskButton->name().c_str()); }
     if (!taskReport3->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskReport3->name().c_str()); }
     if (!taskReport4->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskReport4->name().c_str()); }
@@ -446,12 +442,13 @@ void loop()
 #endif
 
     // taskReport sleeps on first run(), and after each report.
-    // It resets reportCnt to 0 on each report.
-    ++reportCnt;
+    // It resets iterations to 0 on each report.
+    if (!iterations) start = micros();
+    ++iterations;
 #ifdef ESP32_FREERTOS
-    if (reportCnt > 5000)
+    if (iterations >= 5000)
 #else
-    if (reportCnt > 200000)
+    if (iterations >= 200000)
 #endif
     {
         reportSema.post();
