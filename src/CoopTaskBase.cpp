@@ -68,6 +68,27 @@ extern "C" {
         if (self) CoopTaskBase::delay(self, ms);
         else __delay(ms);
     }
+
+    void __esp_yield();
+
+    // disable CONT suspend, resume by esp_schedule pattern
+    void esp_yield()
+    {
+        auto self = CoopTaskBase::self();
+        if (self) CoopTaskBase::yield(self);
+        else __esp_yield();
+    }
+
+    void __esp_delay(unsigned long ms);
+
+    // disable CONT suspend, resume by esp_schedule pattern
+    void esp_delay(unsigned long ms)
+    {
+        auto self = CoopTaskBase::self();
+        if (self) CoopTaskBase::yield(self);
+        else __esp_delay(ms);
+    }
+
 #elif defined(ESP32) && !defined(ESP32_FREERTOS)
     void __delay(uint32_t ms);
 
