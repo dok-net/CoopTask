@@ -1,4 +1,10 @@
+# Warning
+In this release on ESP8266 scanning WiFi networks and WPS are both broken in CoopTask tasks.
+Using these features directly from loop() is unaffected.
+This warning will be silently removed once ESP8266 Git master has accepted the necessary PR.
+
 # CoopTask
+
 An all-C++ implementation of a cooperative multitasking layer for ESP8266/ESP32,
 Arduino boards, Linux, and Windows x86 and x86_64
 
