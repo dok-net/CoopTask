@@ -166,13 +166,14 @@ public:
     bool IRAM_ATTR scheduleTask(bool wakeup = true);
 
 #ifdef ESP8266
-    /// For full transparency to all features, cyclic task scheduling, state evaluation
-    /// and running is performed in a loop implemented in user code. See the CoopTask examples for this.
-    /// This may not be required, for instance if a given number of loop tasks need to run
-    /// indefinitely without exit codes or explicit deep sleep system states.
-    /// On platforms where a scheduler exists that is suffiently capable to run CoopTasks,
-    /// calling this function switches all task creation and scheduling to use that, obviating
-    /// the need to implement a scheduling loop in user code.
+    /// For full access to all features, cyclic task scheduling, state evaluation
+    /// and running are performed explicitly from user code. For convenience, the function
+    /// runCoopTasks() implements the pattern as best practice. See the CoopTask examples for this.
+    /// If only a pre-determined number of loop tasks need to run indefinitely
+    /// without exit codes or explicit deep sleep system states, on platforms where a
+    /// scheduler exists that is suffiently capable to iteratively run each of these CoopTasks,
+    /// calling this function switches all task creation and scheduling to using that, obviating
+    /// the need to call a scheduler explicitly from user code.
     /// The scheduler selection should be done before the first CoopTask is created, and not
     /// changed thereafter during runtime.
     /// By default, builtin schedulers are not used, for well-defined behavior and portability.
