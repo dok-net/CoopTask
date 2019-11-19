@@ -95,6 +95,28 @@ public:
     static void exit(const Result& code) noexcept { self()->_exit(code); }
 };
 
+template<class StackAllocator> class CoopTask<void, StackAllocator> : public BasicCoopTask<StackAllocator>
+{
+public:
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+    using taskfunction_t = std::function< void() noexcept >;
+#else
+    using taskfunction_t = void(*)() noexcept;
+#endif
+
+#if defined(ARDUINO)
+    CoopTask(const String& name, CoopTask::taskfunction_t func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
+#else
+    CoopTask(const std::string& name, CoopTask::taskfunction_t func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
+#endif
+        BasicCoopTask<StackAllocator>(name, func, stackSize)
+    {
+    }
+
+    /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+    static CoopTask* self() noexcept { return static_cast<CoopTask*>(BasicCoopTask<StackAllocator>::self()); }
+};
+
 /// A convenience function that creates a new CoopTask instance for the supplied task function, with the
 /// given name and stack size, and schedules it.
 /// @returns: the pointer to the new CoopTask instance, or nullptr if the creation or preparing for scheduling failed.
