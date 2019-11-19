@@ -852,7 +852,7 @@ void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& rea
 #endif
 
     uint32_t taskCount = CoopTaskBase::getRunnableTasksCount();
-    uint32_t minDelay = ~0UL;
+    uint32_t minDelay_ms = ~0UL;
     for (uint32_t i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
 #if defined(ESP8266) || defined(ESP32)
@@ -865,12 +865,21 @@ void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& rea
             auto runResult = task->run();
             if (runResult < 0 && reaper)
                 reaper(task);
-            else if (task->delayed() && static_cast<uint32_t>(runResult) < minDelay)
-                minDelay = runResult;
+            else if (minDelay_ms)
+            {
+                if (!task->suspended())
+                    minDelay_ms = 0;
+                else if (task->delayed())
+                {
+                    uint32_t delay_ms = task->delayIsMs() ? static_cast<uint32_t>(runResult) : static_cast<uint32_t>(runResult) / 1000UL;
+                    if (delay_ms < minDelay_ms)
+                        minDelay_ms = delay_ms;
+                }
+            }
         }
     }
 
-    if (minDelay && (!onDelay || onDelay(minDelay)))
+    if (minDelay_ms && (!onDelay || onDelay(minDelay_ms)))
     {
 #ifdef ESP32_FREERTOS
         vTaskSuspend(yieldGuardHandle);
