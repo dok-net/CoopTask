@@ -23,11 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "CoopTaskBase.h"
 #include "circular_queue/circular_queue.h"
 
-#if !defined(ESP32) && !defined(ESP8266)
-#define ICACHE_RAM_ATTR
-#define IRAM_ATTR
-#endif
-
 /// A semaphore that is safe to use from CoopTasks.
 /// Only post() is safe to use from interrupt service routines,
 /// or concurrent OS threads that must synchronized with the singled thread running CoopTasks.
