@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #if defined(ESP8266) || defined(ESP32)
-#include <circular_queue/Delegate.h>
+#include "circular_queue/Delegate.h"
 #include <array>
 #include <memory>
 #include <csetjmp>
@@ -34,12 +34,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <setjmp.h>
 #include <Arduino.h>
 #elif defined(_MSC_VER)
-#include <circular_queue/Delegate.h>
+#include "circular_queue/Delegate.h"
 #include <array>
 #include <Windows.h>
 #include <string>
 #else
-#include <circular_queue/Delegate.h>
+#include "circular_queue/Delegate.h"
 #include <array>
 #include <csetjmp>
 #include <string>
