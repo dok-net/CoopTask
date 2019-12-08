@@ -26,7 +26,7 @@ template<typename Result = int, class StackAllocator = CoopTaskStackAllocator> c
 {
 public:
 #if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
-    using taskfunction_t = std::function< Result() >;
+    using taskfunction_t = Delegate< Result() >;
 #else
     using taskfunction_t = Result(*)();
 #endif
@@ -99,7 +99,7 @@ template<class StackAllocator> class CoopTask<void, StackAllocator> : public Bas
 {
 public:
 #if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
-    using taskfunction_t = std::function< void() noexcept >;
+    using taskfunction_t = Delegate< void() noexcept >;
 #else
     using taskfunction_t = void(*)() noexcept;
 #endif

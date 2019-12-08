@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #if defined(ESP8266) || defined(ESP32)
-#include <functional>
+#include <circular_queue/Delegate.h>
 #include <array>
 #include <memory>
 #include <csetjmp>
@@ -34,12 +34,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <setjmp.h>
 #include <Arduino.h>
 #elif defined(_MSC_VER)
-#include <functional>
+#include <circular_queue/Delegate.h>
 #include <array>
 #include <Windows.h>
 #include <string>
 #else
-#include <functional>
+#include <circular_queue/Delegate.h>
 #include <array>
 #include <csetjmp>
 #include <string>
@@ -63,7 +63,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 class CoopTaskBase
 {
 protected:
-    using taskfunction_t = std::function< void() noexcept >;
+    using taskfunction_t = Delegate< void() noexcept >;
 
 #ifdef ARDUINO
     CoopTaskBase(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
@@ -254,6 +254,6 @@ inline void delay(uint32_t ms) { CoopTaskBase::delay(ms); }
 /// This can be used for power saving, if wake up by asynchronous events is properly considered.
 /// onDelay() returns a bool value, if true, runCoopTasks performs the default housekeeping actions
 /// in addition, otherwise it skips those.
-void runCoopTasks(const std::function<void(const CoopTaskBase* const task)>& reaper, const std::function<bool(uint32_t ms)>& onDelay = {});
+void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, const Delegate<bool(uint32_t ms)>& onDelay = {});
 
 #endif // __CoopTaskBase_h

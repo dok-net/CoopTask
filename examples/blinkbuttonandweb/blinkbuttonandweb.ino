@@ -442,7 +442,7 @@ void loop()
     if (!iterations) start = micros();
     ++iterations;
 #ifdef ESP32_FREERTOS
-    if (iterations >= 5000)
+    if (iterations >= 50000)
 #else
     if (iterations >= 200000)
 #endif
