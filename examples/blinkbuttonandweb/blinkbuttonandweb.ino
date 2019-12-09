@@ -283,7 +283,7 @@ void setup()
 #elif defined(ESP32)
         0x540);
 #else
-        0x70);
+        0x58);
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
@@ -366,18 +366,10 @@ void setup()
 
 #if defined(ESP8266) || defined(ESP32)
     taskReport3 = new CoopTask<void>(F("Report3"), reportFunc
-#if defined(ESP8266) || defined(ESP32)
         , 0x600);
-#else
-        , 0x70);
-#endif
     if (!*taskReport3) Serial.println("CoopTask Report out of stack");
     taskReport4 = new CoopTask<void>(F("Report4"), reportFunc
-#if defined(ESP8266) || defined(ESP32)
         , 0x600);
-#else
-        , 0x70);
-#endif
     if (!*taskReport4) Serial.println("CoopTask Report out of stack");
 
     taskWeb = new CoopTask<void>(F("Web"), []() noexcept
