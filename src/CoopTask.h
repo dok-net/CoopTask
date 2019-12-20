@@ -25,11 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 template<typename Result = int, class StackAllocator = CoopTaskStackAllocator> class CoopTask : public BasicCoopTask<StackAllocator>
 {
 public:
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     using taskfunction_t = Delegate< Result() >;
-#else
-    using taskfunction_t = Result(*)();
-#endif
 
 #if defined(ARDUINO)
     CoopTask(const String& name, CoopTask::taskfunction_t _func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
@@ -98,16 +94,12 @@ public:
 template<class StackAllocator> class CoopTask<void, StackAllocator> : public BasicCoopTask<StackAllocator>
 {
 public:
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
-    using taskfunction_t = Delegate< void() noexcept >;
-#else
-    using taskfunction_t = void(*)() noexcept;
-#endif
+    using CoopTaskBase::taskfunction_t;
 
 #if defined(ARDUINO)
-    CoopTask(const String& name, CoopTask::taskfunction_t func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
+    CoopTask(const String& name, CoopTaskBase::taskfunction_t func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
 #else
-    CoopTask(const std::string& name, CoopTask::taskfunction_t func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
+    CoopTask(const std::string& name, CoopTaskBase::taskfunction_t func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
 #endif
         BasicCoopTask<StackAllocator>(name, func, stackSize)
     {

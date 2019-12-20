@@ -252,6 +252,6 @@ inline void delay(uint32_t ms) { CoopTaskBase::delay(ms); }
 /// This can be used for power saving, if wake up by asynchronous events is properly considered.
 /// onDelay() returns a bool value, if true, runCoopTasks performs the default housekeeping actions
 /// in addition, otherwise it skips those.
-void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, const Delegate<bool(uint32_t ms)>& onDelay = {});
+void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, const Delegate<bool(uint32_t ms)>& onDelay = nullptr);
 
 #endif // __CoopTaskBase_h
