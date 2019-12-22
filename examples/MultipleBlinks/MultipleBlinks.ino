@@ -44,7 +44,7 @@ void setup() {
 
 void taskReaper(const CoopTaskBase* const task)
 {
-    delete static_cast<const CoopTask<void>*>(task);
+    delete task;
 }
 
 void loop() {

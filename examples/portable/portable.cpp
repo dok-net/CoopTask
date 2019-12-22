@@ -83,7 +83,7 @@ int main()
         if (task == &blink)
         {
             std::cerr << task->name() << " returns = " << blink.exitCode() << std::endl;
-            delete static_cast<const CoopTask<std::string, CoopTaskStackAllocatorFromLoop<>>*>(task);
+            delete task;
             exit(0);
         }
     };

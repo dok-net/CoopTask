@@ -73,7 +73,6 @@ protected:
     }
     CoopTaskBase(const CoopTaskBase&) = delete;
     CoopTaskBase& operator=(const CoopTaskBase&) = delete;
-    ~CoopTaskBase();
 
     static constexpr int32_t DELAYMICROS_THRESHOLD = 50;
     static constexpr uint32_t DELAY_MAXINT = (~(uint32_t)0) >> 1;
@@ -133,6 +132,7 @@ private:
     taskfunction_t func;
 
 public:
+    virtual ~CoopTaskBase();
 #if defined(ESP32)
     static constexpr uint32_t MAXSTACKSPACE = 0x2000;
 #elif defined(ESP8266)

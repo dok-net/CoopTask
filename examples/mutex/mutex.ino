@@ -220,7 +220,7 @@ void taskReaper(const CoopTaskBase* const task)
 {
     Serial.print("deleting task ");
     Serial.println(task->name());
-    delete static_cast<const BasicCoopTask<>*>(task);
+    delete task;
 }
 
 // the loop function runs over and over again until power down or reset

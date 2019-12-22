@@ -81,7 +81,7 @@ public:
     /// or gets deleted.
     static const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS>& getRunnableTasks()
     {
-        // this is safe to do because CoopTaskBase ctor is protected. is it necessary due to non-virtual destructors.
+        // this is safe to do because CoopTaskBase ctor is protected.
         return reinterpret_cast<const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS>&>(CoopTaskBase::getRunnableTasks());
     }
 };

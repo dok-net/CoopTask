@@ -283,7 +283,7 @@ void setup()
 #elif defined(ESP32)
         0x540);
 #else
-        0x58);
+        0x40);
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
@@ -411,7 +411,7 @@ void taskReaper(const CoopTaskBase* const task)
     if (task == taskText)
     {
         Serial.print(task->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
-        delete taskText;
+        delete task;
         taskText = nullptr;
     }
 }
