@@ -220,25 +220,28 @@ bool CoopTaskBase::enrollRunnable()
 
 void CoopTaskBase::delistRunnable()
 {
+#if !defined(ESP32) && defined(ARDUINO)
+    InterruptLock lock;
     for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
-#if !defined(ESP32) && defined(ARDUINO)
-        InterruptLock lock;
         if (runnableTasks[i].load() == this)
         {
             runnableTasks[i].store(nullptr);
             runnableTasksCount.store(runnableTasksCount.load() - 1);
             break;
         }
+    }
 #else
+    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    {
         CoopTaskBase* self = this;
         if (runnableTasks[i].compare_exchange_strong(self, nullptr))
         {
             --runnableTasksCount;
             break;
         }
-#endif
     }
+#endif
 }
 
 bool IRAM_ATTR CoopTaskBase::scheduleTask(bool wakeup)
