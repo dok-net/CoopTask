@@ -643,6 +643,8 @@ CoopTaskBase* CoopTaskBase::self() noexcept
 
 #else
 
+jmp_buf CoopTaskBase::env;
+
 CoopTaskBase::~CoopTaskBase()
 {
     delistRunnable();

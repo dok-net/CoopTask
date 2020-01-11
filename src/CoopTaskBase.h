@@ -97,7 +97,7 @@ protected:
     static void taskFunc(void* _self);
 #else
     char* taskStackTop = nullptr;
-    jmp_buf env;
+    static jmp_buf env;
     jmp_buf env_yield;
 #endif
     static constexpr unsigned MAXNUMBERCOOPTASKS = FULLFEATURES ? 32 : 4;
