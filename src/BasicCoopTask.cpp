@@ -25,15 +25,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 
-char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
+char* CoopTaskStackAllocator::allocateStack(unsigned stackSize)
 {
     char* stackTop = nullptr;
-    if (stackSize <= CoopTaskBase::MAXSTACKSPACE - 2 * sizeof(CoopTaskBase::STACKCOOKIE))
+    if (stackSize <= CoopTaskBase::MAXSTACKSPACE - (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE))
     {
 #if defined(ESP8266)
-        stackTop = new (std::nothrow) char[stackSize + 2 * sizeof(CoopTaskBase::STACKCOOKIE)];
+        stackTop = new (std::nothrow) char[stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE)];
 #else
-        stackTop = new char[stackSize + 2 * sizeof(CoopTaskBase::STACKCOOKIE)];
+        stackTop = new char[stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE)];
 #endif
     }
     return stackTop;
@@ -43,13 +43,13 @@ char* CoopTaskStackAllocator::allocateStack(uint32_t stackSize)
 
 #if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 
-char* CoopTaskStackAllocatorFromLoopBase::allocateStack(uint32_t loopReserve, uint32_t stackSize)
+char* CoopTaskStackAllocatorFromLoopBase::allocateStack(unsigned loopReserve, unsigned stackSize)
 {
     char* bp = static_cast<char*>(alloca(loopReserve));
     char* stackTop = nullptr;
-    if (stackSize <= CoopTaskBase::MAXSTACKSPACE - 2 * sizeof(CoopTaskBase::STACKCOOKIE))
+    if (stackSize <= CoopTaskBase::MAXSTACKSPACE - (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE))
     {
-        stackTop = bp - (stackSize + 2 * sizeof(CoopTaskBase::STACKCOOKIE));
+        stackTop = bp - (stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE));
     }
     return stackTop;
 }

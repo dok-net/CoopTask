@@ -60,13 +60,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 class CoopTaskBase
 {
+public:
+    static constexpr bool FULLFEATURES = sizeof(unsigned) >= 4;
+
 protected:
     using taskfunction_t = Delegate< void() noexcept >;
 
 #ifdef ARDUINO
-    CoopTaskBase(const String& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    CoopTaskBase(const String& name, taskfunction_t _func, unsigned stackSize = DEFAULTTASKSTACKSIZE) :
 #else
-    CoopTaskBase(const std::string& name, taskfunction_t _func, uint32_t stackSize = DEFAULTTASKSTACKSIZE) :
+    CoopTaskBase(const std::string& name, taskfunction_t _func, unsigned stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
         taskName(name), taskStackSize(stackSize), sleeps(true), delays(false), func(_func)
     {
@@ -83,7 +86,7 @@ protected:
     const std::string taskName;
 #endif
 
-    uint32_t taskStackSize;
+    unsigned taskStackSize;
 #if defined(_MSC_VER)
     static LPVOID primaryFiber;
     LPVOID taskFiber = nullptr;
@@ -97,9 +100,9 @@ protected:
     jmp_buf env;
     jmp_buf env_yield;
 #endif
-    static constexpr auto MAXNUMBERCOOPTASKS = 20;
+    static constexpr unsigned MAXNUMBERCOOPTASKS = FULLFEATURES ? 32 : 4;
     static std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS> runnableTasks;
-    static std::atomic<uint32_t> runnableTasksCount;
+    static std::atomic<unsigned> runnableTasksCount;
     static CoopTaskBase* current;
     bool init = false;
     bool cont = true;
@@ -108,7 +111,7 @@ protected:
     std::atomic<bool> delays;
 
     int32_t initialize();
-    void doYield(uint32_t val) noexcept;
+    void doYield(unsigned val) noexcept;
 
 #if defined(ESP8266)
     static bool usingBuiltinScheduler;
@@ -134,16 +137,16 @@ private:
 public:
     virtual ~CoopTaskBase();
 #if defined(ESP32)
-    static constexpr uint32_t MAXSTACKSPACE = 0x2000;
+    static constexpr unsigned MAXSTACKSPACE = 0x2000;
 #elif defined(ESP8266)
-    static constexpr uint32_t MAXSTACKSPACE = 0x1000;
+    static constexpr unsigned MAXSTACKSPACE = 0x1000;
 #elif defined(ARDUINO)
-    static constexpr uint32_t MAXSTACKSPACE = 0x180;
+    static constexpr unsigned MAXSTACKSPACE = FULLFEATURES ? 0x180 : 0x40;
 #else
-    static constexpr uint32_t MAXSTACKSPACE = 0x10000;
+    static constexpr unsigned MAXSTACKSPACE = 0x10000;
 #endif
-    static constexpr uint32_t STACKCOOKIE = 0xdeadbeef;
-    static constexpr uint32_t DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - 2 * sizeof(STACKCOOKIE);
+    static constexpr unsigned STACKCOOKIE = FULLFEATURES ? 0xdeadbeefUL : 0xdeadU;
+    static constexpr unsigned DEFAULTTASKSTACKSIZE = MAXSTACKSPACE - (FULLFEATURES ? 2 : 1) * sizeof(STACKCOOKIE);
 
 #ifdef ARDUINO
     const String& name() const noexcept { return taskName; }
@@ -189,7 +192,7 @@ public:
         return runnableTasks;
     }
     /// @returns: the count of runnable, non-nullptr, tasks in the return of getRunnableTasks().
-    static uint32_t getRunnableTasksCount()
+    static unsigned getRunnableTasksCount()
     {
         return runnableTasksCount.load();
     }
@@ -198,7 +201,7 @@ public:
     int32_t run();
 
     /// @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
-    uint32_t getFreeStack();
+    unsigned getFreeStack();
 
     bool delayIsMs() const noexcept { return delay_ms; }
 

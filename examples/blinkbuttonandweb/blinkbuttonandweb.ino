@@ -71,7 +71,7 @@ public:
         reinterpret_cast<Button*>(self)->buttonIsr();
     }
 
-    uint32_t testResetPressed() {
+    unsigned testResetPressed() {
         if (pressed) {
             Serial.printf("Button on pin %u has been pressed %u times\n", PIN, numberKeyPresses);
             pressed = false;
@@ -81,7 +81,7 @@ public:
 
 private:
     const uint8_t PIN;
-    volatile uint32_t numberKeyPresses = 0;
+    volatile unsigned numberKeyPresses = 0;
     volatile bool pressed = false;
 };
 #endif
@@ -158,7 +158,7 @@ void handleNotFound() {
 CoopTask<void>* taskButton;
 #endif
 CoopTask<void, CoopTaskStackAllocatorFromLoop<>>* taskBlink;
-CoopTask<uint32_t>* taskText;
+CoopTask<unsigned>* taskText;
 CoopTask<void>* taskReport0;
 CoopTask<void>* taskReport1;
 CoopTask<void>* taskReport2;
@@ -287,7 +287,7 @@ void setup()
 #endif
     if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
 
-    taskText = new CoopTask<uint32_t>(F("Text"), []() -> uint32_t
+    taskText = new CoopTask<unsigned>(F("Text"), []() -> unsigned
         {
             RAIITest raii;
             Serial.println("Task1 - A");
@@ -302,9 +302,9 @@ void setup()
                 printStackReport(taskText);
             }
 #if !defined(ARDUINO)
-            throw static_cast<uint32_t>(41);
+            throw static_cast<unsigned>(41);
 #endif
-            //CoopTask<uint32_t>::exit(42);
+            //CoopTask<unsigned>::exit(42);
             return 43;
         }
 #if defined(ESP8266)

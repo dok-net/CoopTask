@@ -23,12 +23,24 @@
 // Include CoopTask since we want to manage multiple tasks.
 #include <CoopTask.h>
 
-int led1 = 13;
+#if defined(ARDUINO_AVR_DIGISPARK) || defined(ARDUINO_attiny)
+#define LED_BUILTIN 1
+#endif
+
+int led1 = LED_BUILTIN;
 int led2 = 12;
 int led3 = 11;
 
+char task1Stack[34];
+char task2Stack[34];
+char task3Stack[34];
+
+BasicCoopTask<CoopTaskStackAllocatorFromBSS<task1Stack, sizeof(task1Stack)>> task1("l1", loop1, 32);
+BasicCoopTask<CoopTaskStackAllocatorFromBSS<task2Stack, sizeof(task2Stack)>> task2("l2", loop2, 32);
+BasicCoopTask<CoopTaskStackAllocatorFromBSS<task3Stack, sizeof(task3Stack)>> task3("l3", loop3, 32);
+
 void setup() {
-    Serial.begin(9600);
+    //Serial.begin(9600);
 
     // Setup the 3 pins as OUTPUT
     pinMode(led1, OUTPUT);
@@ -37,9 +49,9 @@ void setup() {
 
     // Add "loop1", "loop2" and "loop3" to CoopTask scheduling.
     // "loop" is always started by default, and is not under the control of CoopTask. 
-    createCoopTask<void>("loop1", loop1);
-    createCoopTask<void>("loop2", loop2);
-    createCoopTask<void>("loop3", loop3);
+    task1.scheduleTask();
+    task2.scheduleTask();
+    task3.scheduleTask();
 }
 
 void taskReaper(const CoopTaskBase* const task)

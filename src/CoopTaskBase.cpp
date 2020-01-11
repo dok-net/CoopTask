@@ -102,7 +102,7 @@ extern "C" {
 }
 
 std::array< std::atomic<CoopTaskBase* >, CoopTaskBase::MAXNUMBERCOOPTASKS> CoopTaskBase::runnableTasks{};
-std::atomic<uint32_t> CoopTaskBase::runnableTasksCount(0);
+std::atomic<unsigned> CoopTaskBase::runnableTasksCount(0);
 
 CoopTaskBase* CoopTaskBase::current = nullptr;
 
@@ -356,12 +356,12 @@ int32_t CoopTaskBase::run()
     }
 }
 
-uint32_t CoopTaskBase::getFreeStack()
+unsigned CoopTaskBase::getFreeStack()
 {
     return taskFiber ? taskStackSize : 0;
 }
 
-void CoopTaskBase::doYield(uint32_t val) noexcept
+void CoopTaskBase::doYield(unsigned val) noexcept
 {
     self()->val = val;
     SwitchToFiber(primaryFiber);
@@ -572,7 +572,7 @@ int32_t CoopTaskBase::run()
     return static_cast<int32_t>(delay_duration) < 0 ? DELAY_MAXINT : delay_duration;
 }
 
-uint32_t CoopTaskBase::getFreeStack()
+unsigned CoopTaskBase::getFreeStack()
 {
     return taskHandle ? uxTaskGetStackHighWaterMark(taskHandle) : 0;
 }
@@ -653,16 +653,15 @@ int32_t CoopTaskBase::initialize()
     if (!cont || init) return -1;
     init = true;
     // fill stack with magic values to check overflow, corruption, and high water mark
-    for (uint32_t pos = 0; pos <= (taskStackSize + sizeof(STACKCOOKIE)) / sizeof(uint32_t); ++pos)
+    for (unsigned pos = 0; pos <= (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE); ++pos)
     {
-        reinterpret_cast<uint32_t*>(taskStackTop)[pos] = STACKCOOKIE;
+        reinterpret_cast<unsigned*>(taskStackTop)[pos] = STACKCOOKIE;
     }
 #if defined(ARDUINO) || defined(__GNUC__)
     char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + sizeof(STACKCOOKIE))));
 #else
 #error Setting stack pointer is not implemented on this target
 #endif
-    //Serial.printf("CoopTask %s: bp = %p, taskStackTop = %p, taskStackTop + taskStackSize + sizeof(STACKCOOKIE) = %p\n", taskName.c_str(), bp, taskStackTop, taskStackTop + taskStackSize + sizeof(STACKCOOKIE));
     func();
     self()->_exit();
     cont = false;
@@ -726,9 +725,9 @@ int32_t CoopTaskBase::run()
     if (!val) {
         current = this;
         if (!init) return initialize();
-        if (*reinterpret_cast<uint32_t*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) != STACKCOOKIE)
+        if (FULLFEATURES && *reinterpret_cast<unsigned*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) != STACKCOOKIE)
         {
-            printf("FATAL ERROR: CoopTask %s stack corrupted\n", name().c_str());
+            //printf("FATAL ERROR: CoopTask %s stack corrupted\n", name().c_str());
             ::abort();
         }
 
@@ -737,9 +736,9 @@ int32_t CoopTaskBase::run()
     else
     {
         current = nullptr;
-        if (*reinterpret_cast<uint32_t*>(taskStackTop) != STACKCOOKIE)
+        if (*reinterpret_cast<unsigned*>(taskStackTop) != STACKCOOKIE)
         {
-            printf("FATAL ERROR: CoopTask %s stack overflow\n", name().c_str());
+            //printf("FATAL ERROR: CoopTask %s stack overflow\n", name().c_str());
             ::abort();
         }
         cont = cont && (val > 0);
@@ -763,19 +762,19 @@ int32_t CoopTaskBase::run()
     }
 }
 
-uint32_t CoopTaskBase::getFreeStack()
+unsigned CoopTaskBase::getFreeStack()
 {
     if (!taskStackTop) return 0;
-    uint32_t pos;
-    for (pos = 1; pos < (taskStackSize + sizeof(STACKCOOKIE)) / sizeof(uint32_t); ++pos)
+    unsigned pos;
+    for (pos = 1; pos < (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE); ++pos)
     {
-        if (STACKCOOKIE != reinterpret_cast<uint32_t*>(taskStackTop)[pos])
+        if (STACKCOOKIE != reinterpret_cast<unsigned*>(taskStackTop)[pos])
             break;
     }
-    return (pos - 1) * sizeof(uint32_t);
+    return (pos - 1) * sizeof(unsigned);
 }
 
-void CoopTaskBase::doYield(uint32_t val) noexcept
+void CoopTaskBase::doYield(unsigned val) noexcept
 {
     if (!setjmp(env_yield))
     {
@@ -854,9 +853,9 @@ void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, 
     }
 #endif
 
-    uint32_t taskCount = CoopTaskBase::getRunnableTasksCount();
+    auto taskCount = CoopTaskBase::getRunnableTasksCount();
     uint32_t minDelay_ms = ~0UL;
-    for (uint32_t i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
+    for (unsigned i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
 #if defined(ESP8266) || defined(ESP32)
         optimistic_yield(10000);

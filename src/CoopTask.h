@@ -28,9 +28,9 @@ public:
     using taskfunction_t = Delegate< Result() >;
 
 #if defined(ARDUINO)
-    CoopTask(const String& name, CoopTask::taskfunction_t _func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
+    CoopTask(const String& name, CoopTask::taskfunction_t _func, unsigned stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
 #else
-    CoopTask(const std::string& name, CoopTask::taskfunction_t _func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
+    CoopTask(const std::string& name, CoopTask::taskfunction_t _func, unsigned stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
 #endif
         // Wrap _func into _exit() to capture return value as exit code
         BasicCoopTask<StackAllocator>(name, captureFuncReturn, stackSize), func(_func)
@@ -97,9 +97,9 @@ public:
     using CoopTaskBase::taskfunction_t;
 
 #if defined(ARDUINO)
-    CoopTask(const String& name, CoopTaskBase::taskfunction_t func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
+    CoopTask(const String& name, CoopTaskBase::taskfunction_t func, unsigned stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
 #else
-    CoopTask(const std::string& name, CoopTaskBase::taskfunction_t func, uint32_t stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
+    CoopTask(const std::string& name, CoopTaskBase::taskfunction_t func, unsigned stackSize = BasicCoopTask<StackAllocator>::DEFAULTTASKSTACKSIZE) :
 #endif
         BasicCoopTask<StackAllocator>(name, func, stackSize)
     {
@@ -115,9 +115,9 @@ public:
 template<typename Result = int, class StackAllocator = CoopTaskStackAllocator>
 CoopTask<Result, StackAllocator>* createCoopTask(
 #if defined(ARDUINO)
-    const String& name, typename CoopTask<Result, StackAllocator>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
+    const String& name, typename CoopTask<Result, StackAllocator>::taskfunction_t func, unsigned stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
 #else
-const std::string& name, typename CoopTask<Result, StackAllocator>::taskfunction_t func, uint32_t stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
+const std::string& name, typename CoopTask<Result, StackAllocator>::taskfunction_t func, unsigned stackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE)
 #endif
 {
     auto task = new CoopTask<Result, StackAllocator>(name, func, stackSize);
