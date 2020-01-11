@@ -31,7 +31,7 @@ class CoopSemaphore
 protected:
     std::atomic<unsigned> value;
     std::atomic<CoopTaskBase*> pendingTask0;
-    std::unique_ptr<circular_queue<CoopTaskBase*>> pendingTasks;
+    circular_queue<CoopTaskBase*> pendingTasks;
 
     // capture-less functions for iterators.
     static void awakeAndSchedule(CoopTaskBase*&& task)
@@ -54,14 +54,13 @@ protected:
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
-    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(new circular_queue<CoopTaskBase*>(maxPending)) {}
+    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(maxPending) {}
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()
     {
         // wake up all queued tasks
-        pendingTasks->for_each(awakeAndSchedule);
-        pendingTasks.reset();
+        pendingTasks.for_each(awakeAndSchedule);
     }
 
     /// post() is the only operation that is allowed from an interrupt service routine,

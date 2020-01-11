@@ -73,7 +73,7 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         if (withDeadline) expired = millis() - start;
         if (!(selfFirst && valOnEntry))
         {
-            if (pendingTasks->push(self))
+            if (pendingTasks.push(self))
             {
                 if (!withDeadline) self->sleep(true);
             }
@@ -88,19 +88,19 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         bool selfSuccess = false;
         for (;;)
         {
-            if (pendingTasks->available())
+            if (pendingTasks.available())
             {
 #if !defined(ESP32) && defined(ARDUINO)
                 {
                     InterruptLock lock;
                     pendingTask = pendingTask0.load();
-                    if (fwd || !pendingTask) pendingTask0.store(pendingTasks->pop());
+                    if (fwd || !pendingTask) pendingTask0.store(pendingTasks.pop());
                 }
 #else
                 pendingTask = nullptr;
                 bool exchd = false;
-                while ((fwd || !pendingTask) && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks->peek()))) {}
-                if (exchd) pendingTasks->pop();
+                while ((fwd || !pendingTask) && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks.peek()))) {}
+                if (exchd) pendingTasks.pop();
 #endif
             }
             else
@@ -172,18 +172,18 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
         {
             if (expired >= ms)
             {
-                pendingTasks->for_each_rev_requeue(notIsSelfTask);
+                pendingTasks.for_each_rev_requeue(notIsSelfTask);
 #if !defined(ESP32) && defined(ARDUINO)
                 {
                     InterruptLock lock;
                     pendingTask = pendingTask0.load();
-                    if (pendingTask == self) pendingTask0.store(pendingTasks->available() ? pendingTasks->pop() : nullptr);
+                    if (pendingTask == self) pendingTask0.store(pendingTasks.available() ? pendingTasks.pop() : nullptr);
                 }
 #else
                 bool exchd = false;
                 pendingTask = self;
-                while ((pendingTask == self) && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks->available() ? pendingTasks->peek() : nullptr))) {}
-                if (exchd && pendingTasks->available()) pendingTasks->pop();
+                while ((pendingTask == self) && !(exchd = pendingTask0.compare_exchange_weak(pendingTask, pendingTasks.available() ? pendingTasks.peek() : nullptr))) {}
+                if (exchd && pendingTasks.available()) pendingTasks.pop();
 #endif
                 return false;
             }
