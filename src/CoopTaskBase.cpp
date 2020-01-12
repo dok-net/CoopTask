@@ -165,7 +165,7 @@ bool CoopTaskBase::enrollRunnable()
 {
     bool enrolled = false;
     bool inserted = false;
-    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (unsigned i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
 #if !defined(ESP32) && defined(ARDUINO)
         InterruptLock lock;
@@ -222,7 +222,7 @@ void CoopTaskBase::delistRunnable()
 {
 #if !defined(ESP32) && defined(ARDUINO)
     InterruptLock lock;
-    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (unsigned i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
         if (runnableTasks[i].load() == this)
         {
@@ -232,7 +232,7 @@ void CoopTaskBase::delistRunnable()
         }
     }
 #else
-    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (unsigned i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
         CoopTaskBase* self = this;
         if (runnableTasks[i].compare_exchange_strong(self, nullptr))
@@ -633,7 +633,7 @@ CoopTaskBase* CoopTaskBase::self() noexcept
     const auto currentTaskHandle = xTaskGetCurrentTaskHandle();
     auto cur = current;
     if (cur && currentTaskHandle == cur->taskHandle) return cur;
-    for (int i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (unsigned i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
         cur = runnableTasks[i].load();
         if (cur && currentTaskHandle == cur->taskHandle) return cur;

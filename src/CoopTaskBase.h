@@ -100,7 +100,7 @@ protected:
     static jmp_buf env;
     jmp_buf env_yield;
 #endif
-    static constexpr unsigned MAXNUMBERCOOPTASKS = FULLFEATURES ? 32 : 4;
+    static constexpr unsigned MAXNUMBERCOOPTASKS = FULLFEATURES ? 32 : 8;
     static std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS> runnableTasks;
     static std::atomic<unsigned> runnableTasksCount;
     static CoopTaskBase* current;
@@ -141,7 +141,7 @@ public:
 #elif defined(ESP8266)
     static constexpr unsigned MAXSTACKSPACE = 0x1000;
 #elif defined(ARDUINO)
-    static constexpr unsigned MAXSTACKSPACE = FULLFEATURES ? 0x180 : 0x40;
+    static constexpr unsigned MAXSTACKSPACE = FULLFEATURES ? 0x180 : 0xc0;
 #else
     static constexpr unsigned MAXSTACKSPACE = 0x10000;
 #endif
