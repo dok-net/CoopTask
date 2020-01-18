@@ -31,14 +31,16 @@ public:
 #endif
 };
 
-template<char StackTop[], unsigned StackSize> class CoopTaskStackAllocatorFromBSS
+template<unsigned StackSize> class CoopTaskStackAllocatorAsMember
 {
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
+protected:
+    char _stackTop[StackSize];
 public:
-    static char* allocateStack(unsigned stackSize)
+    char* allocateStack(unsigned stackSize)
     {
         return (StackSize == (stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE))) ?
-            StackTop : nullptr;
+            _stackTop : nullptr;
     }
     static void disposeStack(char* stackTop) { }
 #endif
@@ -68,8 +70,6 @@ public:
 
 template<class StackAllocator = CoopTaskStackAllocator> class BasicCoopTask : public CoopTaskBase
 {
-protected:
-    StackAllocator stackAllocator;
 public:
 #ifdef ARDUINO
     BasicCoopTask(const String& name, taskfunction_t _func, unsigned stackSize = DEFAULTTASKSTACKSIZE) :
@@ -97,6 +97,8 @@ public:
         // this is safe to do because CoopTaskBase ctor is protected.
         return reinterpret_cast<const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS>&>(CoopTaskBase::getRunnableTasks());
     }
+protected:
+    StackAllocator stackAllocator;
 };
 
 #endif // __BasicCoopTask_h

@@ -28,14 +28,11 @@
 #define LED_BUILTIN 1
 #endif
 
-char task1Stack[42];
-char task2Stack[42];
-
 CoopSemaphore taskSema(1, 1);
 int taskToken = 1;
 
-BasicCoopTask<CoopTaskStackAllocatorFromBSS<task1Stack, sizeof(task1Stack)>> task1("l1", loop1, 40);
-BasicCoopTask<CoopTaskStackAllocatorFromBSS<task2Stack, sizeof(task2Stack)>> task2("l2", loop2, 40);
+BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task1("l1", loop1, 40);
+BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task2("l2", loop2, 40);
 BasicCoopTask<CoopTaskStackAllocatorFromLoop<40>> task3("l3", loop3, 40);
 
 void setup() {
