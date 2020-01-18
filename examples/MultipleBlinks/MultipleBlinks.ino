@@ -3,10 +3,7 @@
 
  Ported to CoopTask from the version that
  demonstrates the use of the Scheduler library for the Arduino Due.
- CoopTask works also on Arduino AVR, ESP8266, ESP32, and more.
-
- Hardware required :
- * LEDs connected to pins 11, 12, and 13
+ CoopTask works on Arduino AVR (including ATtiny), ESP8266, ESP32, ARM Linux and PC OSs.
 
  created 8 Oct 2012
  by Cristian Maglie
@@ -22,30 +19,29 @@
 
 // Include CoopTask since we want to manage multiple tasks.
 #include <CoopTask.h>
+#include <CoopSemaphore.h>
 
-#if defined(ARDUINO_AVR_DIGISPARK) || defined(ARDUINO_attiny)
+// ATtiny85 max. working memory utilization, AVR 1.8.2 toolchain:
+// "Minimum Memory Usage: 357 bytes (70% of a 512 byte maximum)"
+
+#if defined(ARDUINO_attiny)
 #define LED_BUILTIN 1
 #endif
 
-int led1 = LED_BUILTIN;
-int led2 = 12;
-int led3 = 11;
+char task1Stack[42];
+char task2Stack[42];
 
-char task1Stack[34];
-char task2Stack[34];
-char task3Stack[34];
+CoopSemaphore taskSema(1, 1);
+int taskToken = 1;
 
-BasicCoopTask<CoopTaskStackAllocatorFromBSS<task1Stack, sizeof(task1Stack)>> task1("l1", loop1, 32);
-BasicCoopTask<CoopTaskStackAllocatorFromBSS<task2Stack, sizeof(task2Stack)>> task2("l2", loop2, 32);
-BasicCoopTask<CoopTaskStackAllocatorFromBSS<task3Stack, sizeof(task3Stack)>> task3("l3", loop3, 32);
+BasicCoopTask<CoopTaskStackAllocatorFromBSS<task1Stack, sizeof(task1Stack)>> task1("l1", loop1, 40);
+BasicCoopTask<CoopTaskStackAllocatorFromBSS<task2Stack, sizeof(task2Stack)>> task2("l2", loop2, 40);
+BasicCoopTask<CoopTaskStackAllocatorFromLoop<40>> task3("l3", loop3, 40);
 
 void setup() {
     //Serial.begin(9600);
-
     // Setup the 3 pins as OUTPUT
-    pinMode(led1, OUTPUT);
-    pinMode(led2, OUTPUT);
-    pinMode(led3, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
 
     // Add "loop1", "loop2" and "loop3" to CoopTask scheduling.
     // "loop" is always started by default, and is not under the control of CoopTask. 
@@ -54,64 +50,91 @@ void setup() {
     task3.scheduleTask();
 }
 
-void taskReaper(const CoopTaskBase* const task)
-{
-    delete task;
-}
-
 void loop() {
     // loops forever by default
-    runCoopTasks(taskReaper);
+    runCoopTasks();
 }
 
 // Task no.1: blink LED with 1 second delay.
 void loop1() {
     for (;;) // explicitly run forever without returning
     {
-        digitalWrite(led1, HIGH);
+        taskSema.wait();
+        if (1 != taskToken)
+        {
+            taskSema.post();
+            yield();
+            continue;
+        }
+        for (int i = 0; i < 3; ++i)
+        {
+            digitalWrite(LED_BUILTIN, HIGH);
 
-        // IMPORTANT:
-        // When multiple tasks are running 'delay' passes control to
-        // other tasks while waiting and guarantees they get executed.
-        delay(1000);
+            // IMPORTANT:
+            // When multiple tasks are running 'delay' passes control to
+            // other tasks while waiting and guarantees they get executed.
+            delay(1000);
 
-        digitalWrite(led1, LOW);
-        delay(1000);
+            digitalWrite(LED_BUILTIN, LOW);
+            delay(1000);
+        }
+        taskToken = 2;
+        taskSema.post();
     }
 }
 
-// Task no.2: blink LED with 0.1 second delay.
+// Task no.2: blink LED with 0.25 second delay.
 void loop2() {
     for (;;) // explicitly run forever without returning
     {
-        digitalWrite(led2, HIGH);
-        delay(100);
-        digitalWrite(led2, LOW);
-        delay(100);
+        taskSema.wait();
+        if (2 != taskToken)
+        {
+            taskSema.post();
+            yield();
+            continue;
+        }
+        for (int i = 0; i < 6; ++i)
+        {
+            digitalWrite(LED_BUILTIN, HIGH);
+
+            // IMPORTANT:
+            // When multiple tasks are running 'delay' passes control to
+            // other tasks while waiting and guarantees they get executed.
+            delay(250);
+
+            digitalWrite(LED_BUILTIN, LOW);
+            delay(250);
+        }
+        taskToken = 3;
+        taskSema.post();
     }
 }
 
-// Task no.3: accept commands from Serial port
-// '0' turns off LED
-// '1' turns on LED
+// Task no.3: blink LED with 0.05 second delay.
 void loop3() {
     for (;;) // explicitly run forever without returning
     {
-        if (Serial.available()) {
-            char c = Serial.read();
-            if (c == '0') {
-                digitalWrite(led3, LOW);
-                Serial.println("Led turned off!");
-            }
-            if (c == '1') {
-                digitalWrite(led3, HIGH);
-                Serial.println("Led turned on!");
-            }
+        taskSema.wait();
+        if (3 != taskToken)
+        {
+            taskSema.post();
+            yield();
+            continue;
         }
+        for (int i = 0; i < 6; ++i)
+        {
+            digitalWrite(LED_BUILTIN, HIGH);
 
-        // IMPORTANT:
-        // We must call 'yield' at a regular basis to pass
-        // control to other tasks.
-        yield();
+            // IMPORTANT:
+            // When multiple tasks are running 'delay' passes control to
+            // other tasks while waiting and guarantees they get executed.
+            delay(50);
+
+            digitalWrite(LED_BUILTIN, LOW);
+            delay(50);
+        }
+        taskToken = 1;
+        taskSema.post();
     }
 }
