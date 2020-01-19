@@ -102,7 +102,7 @@ extern "C" {
 }
 
 std::array< std::atomic<CoopTaskBase* >, CoopTaskBase::MAXNUMBERCOOPTASKS> CoopTaskBase::runnableTasks{};
-std::atomic<unsigned> CoopTaskBase::runnableTasksCount(0);
+std::atomic<size_t> CoopTaskBase::runnableTasksCount(0);
 
 CoopTaskBase* CoopTaskBase::current = nullptr;
 
@@ -165,7 +165,7 @@ bool CoopTaskBase::enrollRunnable()
 {
     bool enrolled = false;
     bool inserted = false;
-    for (unsigned i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (size_t i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
 #if !defined(ESP32) && defined(ARDUINO)
         InterruptLock lock;
@@ -222,7 +222,7 @@ void CoopTaskBase::delistRunnable()
 {
 #if !defined(ESP32) && defined(ARDUINO)
     InterruptLock lock;
-    for (unsigned i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (size_t i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
         if (runnableTasks[i].load() == this)
         {
@@ -232,7 +232,7 @@ void CoopTaskBase::delistRunnable()
         }
     }
 #else
-    for (unsigned i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (size_t i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
         CoopTaskBase* self = this;
         if (runnableTasks[i].compare_exchange_strong(self, nullptr))
@@ -356,7 +356,7 @@ int32_t CoopTaskBase::run()
     }
 }
 
-unsigned CoopTaskBase::getFreeStack()
+size_t CoopTaskBase::getFreeStack()
 {
     return taskFiber ? taskStackSize : 0;
 }
@@ -572,7 +572,7 @@ int32_t CoopTaskBase::run()
     return static_cast<int32_t>(delay_duration) < 0 ? DELAY_MAXINT : delay_duration;
 }
 
-unsigned CoopTaskBase::getFreeStack()
+size_t CoopTaskBase::getFreeStack()
 {
     return taskHandle ? uxTaskGetStackHighWaterMark(taskHandle) : 0;
 }
@@ -633,7 +633,7 @@ CoopTaskBase* CoopTaskBase::self() noexcept
     const auto currentTaskHandle = xTaskGetCurrentTaskHandle();
     auto cur = current;
     if (cur && currentTaskHandle == cur->taskHandle) return cur;
-    for (unsigned i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (size_t i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
     {
         cur = runnableTasks[i].load();
         if (cur && currentTaskHandle == cur->taskHandle) return cur;
@@ -655,7 +655,7 @@ int32_t CoopTaskBase::initialize()
     if (!cont || init) return -1;
     init = true;
     // fill stack with magic values to check overflow, corruption, and high water mark
-    for (unsigned pos = 0; pos <= (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE); ++pos)
+    for (size_t pos = 0; pos <= (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE); ++pos)
     {
         reinterpret_cast<unsigned*>(taskStackTop)[pos] = STACKCOOKIE;
     }
@@ -764,10 +764,10 @@ int32_t CoopTaskBase::run()
     }
 }
 
-unsigned CoopTaskBase::getFreeStack()
+size_t CoopTaskBase::getFreeStack()
 {
     if (!taskStackTop) return 0;
-    unsigned pos;
+    size_t pos;
     for (pos = 1; pos < (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE); ++pos)
     {
         if (STACKCOOKIE != reinterpret_cast<unsigned*>(taskStackTop)[pos])
@@ -857,7 +857,7 @@ void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, 
 
     auto taskCount = CoopTaskBase::getRunnableTasksCount();
     uint32_t minDelay_ms = ~0UL;
-    for (unsigned i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
+    for (size_t i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
 #if defined(ESP8266) || defined(ESP32)
         optimistic_yield(10000);

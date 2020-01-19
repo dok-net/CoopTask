@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 
-char* CoopTaskStackAllocator::allocateStack(unsigned stackSize)
+char* CoopTaskStackAllocator::allocateStack(size_t stackSize)
 {
     char* stackTop = nullptr;
     if (stackSize <= CoopTaskBase::MAXSTACKSPACE - (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE))
@@ -43,7 +43,7 @@ char* CoopTaskStackAllocator::allocateStack(unsigned stackSize)
 
 #if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 
-char* CoopTaskStackAllocatorFromLoopBase::allocateStack(unsigned loopReserve, unsigned stackSize)
+char* CoopTaskStackAllocatorFromLoopBase::allocateStack(size_t loopReserve, size_t stackSize)
 {
     char* bp = static_cast<char*>(alloca(loopReserve));
     char* stackTop = nullptr;

@@ -29,7 +29,7 @@ protected:
     std::atomic<CoopTaskBase*> owner;
 
 public:
-    CoopMutex(unsigned maxPending = 10) : CoopSemaphore(1, maxPending), owner(nullptr) {}
+    CoopMutex(size_t maxPending = 10) : CoopSemaphore(1, maxPending), owner(nullptr) {}
     CoopMutex(const CoopMutex&) = delete;
     CoopMutex& operator=(const CoopMutex&) = delete;
 

@@ -54,7 +54,7 @@ protected:
 public:
     /// @param val the initial value of the semaphore.
     /// @param maxPending the maximum supported number of concurrently waiting tasks.
-    CoopSemaphore(unsigned val, unsigned maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(maxPending) {}
+    CoopSemaphore(unsigned val, size_t maxPending = 10) : value(val), pendingTask0(nullptr), pendingTasks(maxPending) {}
     CoopSemaphore(const CoopSemaphore&) = delete;
     CoopSemaphore& operator=(const CoopSemaphore&) = delete;
     ~CoopSemaphore()

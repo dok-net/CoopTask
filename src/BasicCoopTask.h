@@ -26,18 +26,18 @@ class CoopTaskStackAllocator
 {
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 public:
-    static char* allocateStack(unsigned stackSize);
+    static char* allocateStack(size_t stackSize);
     static void disposeStack(char* stackTop) { delete[] stackTop; }
 #endif
 };
 
-template<unsigned StackSize> class CoopTaskStackAllocatorAsMember
+template<size_t StackSize> class CoopTaskStackAllocatorAsMember
 {
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 protected:
     char _stackTop[StackSize];
 public:
-    char* allocateStack(unsigned stackSize)
+    char* allocateStack(size_t stackSize)
     {
         return (StackSize == (stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE))) ?
             _stackTop : nullptr;
@@ -50,18 +50,18 @@ class CoopTaskStackAllocatorFromLoopBase
 {
 #if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 protected:
-    static char* allocateStack(unsigned loopReserve, unsigned stackSize);
+    static char* allocateStack(size_t loopReserve, size_t stackSize);
 #endif
 public:
     static void disposeStack(char* stackTop) { }
 };
 
-template<unsigned LoopReserve = (CoopTaskBase::DEFAULTTASKSTACKSIZE / 2)>
+template<size_t LoopReserve = (CoopTaskBase::DEFAULTTASKSTACKSIZE / 2)>
 class CoopTaskStackAllocatorFromLoop : public CoopTaskStackAllocatorFromLoopBase
 {
 #if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 public:
-    static char* allocateStack(unsigned stackSize)
+    static char* allocateStack(size_t stackSize)
     {
         return CoopTaskStackAllocatorFromLoopBase::allocateStack(LoopReserve, stackSize);
     }
@@ -72,9 +72,9 @@ template<class StackAllocator = CoopTaskStackAllocator> class BasicCoopTask : pu
 {
 public:
 #ifdef ARDUINO
-    BasicCoopTask(const String& name, taskfunction_t _func, unsigned stackSize = DEFAULTTASKSTACKSIZE) :
+    BasicCoopTask(const String& name, taskfunction_t _func, size_t stackSize = DEFAULTTASKSTACKSIZE) :
 #else
-    BasicCoopTask(const std::string& name, taskfunction_t _func, unsigned stackSize = DEFAULTTASKSTACKSIZE) :
+    BasicCoopTask(const std::string& name, taskfunction_t _func, size_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
         CoopTaskBase(name, _func, stackSize)
     {
