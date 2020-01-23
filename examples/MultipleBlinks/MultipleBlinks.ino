@@ -31,8 +31,8 @@
 CoopSemaphore taskSema(1, 1);
 int taskToken = 1;
 
-BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task1("l1", loop1, 40);
-BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task2("l2", loop2, 40);
+BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task1("l1", loop1);
+BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task2("l2", loop2);
 BasicCoopTask<CoopTaskStackAllocatorFromLoop<40>> task3("l3", loop3, 40);
 
 void setup() {

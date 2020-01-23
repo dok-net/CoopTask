@@ -24,22 +24,26 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 class CoopTaskStackAllocator
 {
-#if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 public:
+    static constexpr size_t DEFAULTTASKSTACKSIZE = CoopTaskBase::DEFAULTTASKSTACKSIZE;
+#if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
     static char* allocateStack(size_t stackSize);
     static void disposeStack(char* stackTop) { delete[] stackTop; }
 #endif
 };
 
-template<size_t StackSize> class CoopTaskStackAllocatorAsMember
+template<size_t StackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE>
+class CoopTaskStackAllocatorAsMember
 {
+public:
+    static constexpr size_t DEFAULTTASKSTACKSIZE = StackSize;
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 protected:
-    char _stackTop[StackSize];
+    char _stackTop[StackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE)];
 public:
     char* allocateStack(size_t stackSize)
     {
-        return (StackSize == (stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE))) ?
+        return (StackSize >= stackSize) ?
             _stackTop : nullptr;
     }
     static void disposeStack(char* stackTop) { }
@@ -48,6 +52,8 @@ public:
 
 class CoopTaskStackAllocatorFromLoopBase
 {
+public:
+    static constexpr size_t DEFAULTTASKSTACKSIZE = CoopTaskBase::DEFAULTTASKSTACKSIZE;
 #if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 protected:
     static char* allocateStack(size_t loopReserve, size_t stackSize);
@@ -59,8 +65,9 @@ public:
 template<size_t LoopReserve = (CoopTaskBase::DEFAULTTASKSTACKSIZE / 2)>
 class CoopTaskStackAllocatorFromLoop : public CoopTaskStackAllocatorFromLoopBase
 {
-#if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
 public:
+    static constexpr size_t DEFAULTTASKSTACKSIZE = CoopTaskBase::DEFAULTTASKSTACKSIZE;
+#if (defined(ARDUINO) && !defined(ESP32_FREERTOS)) || defined(__GNUC__)
     static char* allocateStack(size_t stackSize)
     {
         return CoopTaskStackAllocatorFromLoopBase::allocateStack(LoopReserve, stackSize);
@@ -72,9 +79,9 @@ template<class StackAllocator = CoopTaskStackAllocator> class BasicCoopTask : pu
 {
 public:
 #ifdef ARDUINO
-    BasicCoopTask(const String& name, taskfunction_t _func, size_t stackSize = DEFAULTTASKSTACKSIZE) :
+    BasicCoopTask(const String& name, taskfunction_t _func, size_t stackSize = StackAllocator::DEFAULTTASKSTACKSIZE) :
 #else
-    BasicCoopTask(const std::string& name, taskfunction_t _func, size_t stackSize = DEFAULTTASKSTACKSIZE) :
+    BasicCoopTask(const std::string& name, taskfunction_t _func, size_t stackSize = StackAllocator::DEFAULTTASKSTACKSIZE) :
 #endif
         CoopTaskBase(name, _func, stackSize)
     {
