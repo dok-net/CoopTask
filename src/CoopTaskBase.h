@@ -64,7 +64,7 @@ public:
     static constexpr bool FULLFEATURES = sizeof(unsigned) >= 4;
 
 protected:
-    using taskfunction_t = Delegate< void() noexcept >;
+    using taskfunction_t = Delegate< void() >;
 
 #ifdef ARDUINO
     CoopTaskBase(const String& name, taskfunction_t _func, size_t stackSize = DEFAULTTASKSTACKSIZE) :
