@@ -1653,7 +1653,7 @@ namespace delegate
         };
 #endif
 
-        template<typename R = void, typename A = void, typename... P>
+        template<typename A = void, typename R = void, typename... P>
         class Delegate : private detail::DelegatePImpl<A, R, P...>
         {
         private:
@@ -1675,8 +1675,8 @@ namespace delegate
 #endif
         };
 
-        template<typename R, typename A, typename... P>
-        class Delegate<R, A*, P...> : private detail::DelegatePImpl<A*, R, P...>
+        template<typename A, typename R, typename... P>
+        class Delegate<A*, R, P...> : private detail::DelegatePImpl<A*, R, P...>
         {
         private:
             using typename detail::DelegatePImpl<A*, R, P...>::FunVPPtr;
@@ -1717,8 +1717,8 @@ namespace delegate
             }
         };
 
-        template<typename R, typename A>
-        class Delegate<R, A> : private detail::DelegateImpl<A, R>
+        template<typename A, typename R>
+        class Delegate<A, R> : private detail::DelegateImpl<A, R>
         {
         private:
             using typename detail::DelegateImpl<A, R>::FunVPPtr;
@@ -1739,8 +1739,8 @@ namespace delegate
 #endif
         };
 
-        template<typename R, typename A>
-        class Delegate<R, A*> : private detail::DelegateImpl<A*, R>
+        template<typename A, typename R>
+        class Delegate<A*, R> : private detail::DelegateImpl<A*, R>
         {
         private:
             using typename detail::DelegateImpl<A*, R>::FunVPPtr;
@@ -1784,18 +1784,18 @@ namespace delegate
     }
 }
 
-template<typename R, typename A = void, typename... P> class Delegate;
-template<typename R, typename A, typename... P> class Delegate<R(P...), A> : public delegate::detail::Delegate<R, A, P...>
+template<typename A = void, typename R = void, typename... P> class Delegate;
+template<typename A, typename R, typename... P> class Delegate<R(P...), A> : public delegate::detail::Delegate<A, R, P...>
 {
 public:
-    using delegate::detail::Delegate<R, A, P...>::Delegate;
-    using delegate::detail::Delegate<R, A, P...>::operator=;
+    using delegate::detail::Delegate<A, R, P...>::Delegate;
+    using delegate::detail::Delegate<A, R, P...>::operator=;
 };
-template<typename R, typename... P> class Delegate<R(P...)> : public delegate::detail::Delegate<R, void, P...>
+template<typename R, typename... P> class Delegate<R(P...)> : public delegate::detail::Delegate<void, R, P...>
 {
 public:
-    using delegate::detail::Delegate<R, void, P...>::Delegate;
-    using delegate::detail::Delegate<R, void, P...>::operator=;
+    using delegate::detail::Delegate<void, R, P...>::Delegate;
+    using delegate::detail::Delegate<void, R, P...>::operator=;
 };
 
 #endif // __Delegate_h
