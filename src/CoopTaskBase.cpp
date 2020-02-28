@@ -856,7 +856,7 @@ void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, 
 #endif
 
     auto taskCount = CoopTaskBase::getRunnableTasksCount();
-    uint32_t minDelay_ms = ~0UL;
+    uint32_t minDelay_ms = ~(decltype(minDelay_ms))0U;
     for (size_t i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
 #if defined(ESP8266) || defined(ESP32)
