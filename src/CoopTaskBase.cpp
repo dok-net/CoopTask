@@ -659,8 +659,14 @@ int32_t CoopTaskBase::initialize()
     {
         reinterpret_cast<unsigned*>(taskStackTop)[pos] = STACKCOOKIE;
     }
-#if defined(ARDUINO) || defined(__GNUC__)
-    char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + sizeof(STACKCOOKIE))));
+#if defined(__GNUC__) && (defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64))
+    asm volatile (
+        "movq %0, %%rsp"
+        :
+        : "r" ((((long unsigned)taskStackTop + taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) >> 4 ) << 4)
+    );
+#elif defined(ARDUINO) || defined(__GNUC__)
+    char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0))));
 #else
 #error Setting stack pointer is not implemented on this target
 #endif
