@@ -200,6 +200,9 @@ public:
     /// @returns: -1: exited. 0: runnable or sleeping. >0: delayed for milliseconds or microseconds, check delayIsMs().
     int32_t run();
 
+    /// Prints the task stack, decodable by the ESP exception decoder
+    void dumpStack();
+    
     /// @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
     size_t getFreeStack();
 

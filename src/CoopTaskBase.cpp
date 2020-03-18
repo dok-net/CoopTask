@@ -735,7 +735,9 @@ int32_t CoopTaskBase::run()
         if (!init) return initialize();
         if (FULLFEATURES && *reinterpret_cast<unsigned*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) != STACKCOOKIE)
         {
-            //printf("FATAL ERROR: CoopTask %s stack corrupted\n", name().c_str());
+#if defined(ESP8266) || defined(ESP32)
+            ::printf(PSTR("FATAL ERROR: CoopTask %s stack corrupted\n"), name().c_str());
+#endif
             ::abort();
         }
 
@@ -746,7 +748,9 @@ int32_t CoopTaskBase::run()
         current = nullptr;
         if (*reinterpret_cast<unsigned*>(taskStackTop) != STACKCOOKIE)
         {
-            //printf("FATAL ERROR: CoopTask %s stack overflow\n", name().c_str());
+#if defined(ESP8266) || defined(ESP32)
+            ::printf(PSTR("FATAL ERROR: CoopTask %s stack overflow\n"), name().c_str());
+#endif
             ::abort();
         }
         cont = cont && (val > 0);
@@ -768,6 +772,30 @@ int32_t CoopTaskBase::run()
         return static_cast<int32_t>(delay_duration) < 0 ? DELAY_MAXINT : delay_duration;
         break;
     }
+}
+
+void CoopTaskBase::dumpStack()
+{
+    if (!taskStackTop) return;
+    size_t pos;
+    for (pos = 1; pos < (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE); ++pos)
+    {
+        if (STACKCOOKIE != reinterpret_cast<unsigned*>(taskStackTop)[pos])
+            break;
+    }
+    ::printf(PSTR(">>>stack>>>\n"));
+    while (pos < (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE))
+    {
+        auto* sp = &reinterpret_cast<unsigned*>(taskStackTop)[pos];
+
+        // rough indicator: stack frames usually have SP saved as the second word
+        bool looksLikeStackFrame = (sp[2] == reinterpret_cast<size_t>(&sp[4]));
+        ::printf(PSTR("%08x:  %08x %08x %08x %08x %c\n"),
+            reinterpret_cast<size_t>(sp), sp[0], sp[1], sp[2], sp[3], looksLikeStackFrame ? '<' : ' ');
+
+        pos += 4;
+    }
+    ::printf(PSTR("<<<stack<<<\n"));
 }
 
 size_t CoopTaskBase::getFreeStack()
