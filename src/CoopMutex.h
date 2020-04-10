@@ -81,7 +81,7 @@ public:
     CoopMutexLock(const CoopMutexLock&) = delete;
     CoopMutexLock& operator=(const CoopMutexLock&) = delete;
     /// @returns: true if the mutex became locked, potentially after blocking, otherwise false.
-    operator bool() {
+    operator bool() const {
         return locked;
     }
     /// The destructor unlocks the mutex.

@@ -157,9 +157,11 @@ public:
     /// @returns: true if the CoopTask object is ready to run, including stack allocation.
     ///           false if either initialization has failed, or the task has exited().
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
-    operator bool() noexcept { return cont && taskStackTop; }
+    operator bool() const noexcept { return cont && taskStackTop; }
+    /// Prints the task stack, decodable by the ESP exception decoder
+    void dumpStack() const;
 #else
-    operator bool() noexcept { return cont; }
+    operator bool() const noexcept { return cont; }
 #endif
 
     /// Ready the task for scheduling, by default waking up the task from both sleep and delay.
@@ -200,11 +202,8 @@ public:
     /// @returns: -1: exited. 0: runnable or sleeping. >0: delayed for milliseconds or microseconds, check delayIsMs().
     int32_t run();
 
-    /// Prints the task stack, decodable by the ESP exception decoder
-    void dumpStack();
-    
     /// @returns: size of unused stack space. 0 if stack is not allocated yet or was deleted after task exited.
-    size_t getFreeStack();
+    size_t getFreeStack() const;
 
     bool delayIsMs() const noexcept { return delay_ms; }
 

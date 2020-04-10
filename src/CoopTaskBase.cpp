@@ -356,7 +356,7 @@ int32_t CoopTaskBase::run()
     }
 }
 
-size_t CoopTaskBase::getFreeStack()
+size_t CoopTaskBase::getFreeStack() const
 {
     return taskFiber ? taskStackSize : 0;
 }
@@ -572,7 +572,7 @@ int32_t CoopTaskBase::run()
     return static_cast<int32_t>(delay_duration) < 0 ? DELAY_MAXINT : delay_duration;
 }
 
-size_t CoopTaskBase::getFreeStack()
+size_t CoopTaskBase::getFreeStack() const
 {
     return taskHandle ? uxTaskGetStackHighWaterMark(taskHandle) : 0;
 }
@@ -774,7 +774,7 @@ int32_t CoopTaskBase::run()
     }
 }
 
-void CoopTaskBase::dumpStack()
+void CoopTaskBase::dumpStack() const
 {
     if (!taskStackTop) return;
     size_t pos;
@@ -798,7 +798,7 @@ void CoopTaskBase::dumpStack()
     ::printf(PSTR("<<<stack<<<\n"));
 }
 
-size_t CoopTaskBase::getFreeStack()
+size_t CoopTaskBase::getFreeStack() const
 {
     if (!taskStackTop) return 0;
     size_t pos;
