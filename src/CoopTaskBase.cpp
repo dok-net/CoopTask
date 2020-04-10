@@ -735,7 +735,7 @@ int32_t CoopTaskBase::run()
         if (!init) return initialize();
         if (FULLFEATURES && *reinterpret_cast<unsigned*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) != STACKCOOKIE)
         {
-#if defined(ESP8266) || defined(ESP32)
+#ifndef ARDUINO_attiny
             ::printf(PSTR("FATAL ERROR: CoopTask %s stack corrupted\n"), name().c_str());
 #endif
             ::abort();
@@ -748,7 +748,7 @@ int32_t CoopTaskBase::run()
         current = nullptr;
         if (*reinterpret_cast<unsigned*>(taskStackTop) != STACKCOOKIE)
         {
-#if defined(ESP8266) || defined(ESP32)
+#ifndef ARDUINO_attiny
             ::printf(PSTR("FATAL ERROR: CoopTask %s stack overflow\n"), name().c_str());
 #endif
             ::abort();
@@ -783,19 +783,25 @@ void CoopTaskBase::dumpStack() const
         if (STACKCOOKIE != reinterpret_cast<unsigned*>(taskStackTop)[pos])
             break;
     }
+#ifndef ARDUINO_attiny
     ::printf(PSTR(">>>stack>>>\n"));
+#endif
     while (pos < (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE))
     {
         auto* sp = &reinterpret_cast<unsigned*>(taskStackTop)[pos];
 
         // rough indicator: stack frames usually have SP saved as the second word
         bool looksLikeStackFrame = (sp[2] == reinterpret_cast<size_t>(&sp[4]));
+#ifndef ARDUINO_attiny
         ::printf(PSTR("%08x:  %08x %08x %08x %08x %c\n"),
             reinterpret_cast<size_t>(sp), sp[0], sp[1], sp[2], sp[3], looksLikeStackFrame ? '<' : ' ');
+#endif
 
         pos += 4;
     }
+#ifndef ARDUINO_attiny
     ::printf(PSTR("<<<stack<<<\n"));
+#endif
 }
 
 size_t CoopTaskBase::getFreeStack() const

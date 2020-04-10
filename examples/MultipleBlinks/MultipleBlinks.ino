@@ -31,27 +31,6 @@
 CoopSemaphore taskSema(1, 1);
 int taskToken = 1;
 
-BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task1("l1", loop1);
-BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task2("l2", loop2);
-BasicCoopTask<CoopTaskStackAllocatorFromLoop<40>> task3("l3", loop3, 40);
-
-void setup() {
-    //Serial.begin(9600);
-    // Setup the 3 pins as OUTPUT
-    pinMode(LED_BUILTIN, OUTPUT);
-
-    // Add "loop1", "loop2" and "loop3" to CoopTask scheduling.
-    // "loop" is always started by default, and is not under the control of CoopTask. 
-    task1.scheduleTask();
-    task2.scheduleTask();
-    task3.scheduleTask();
-}
-
-void loop() {
-    // loops forever by default
-    runCoopTasks();
-}
-
 // Task no.1: blink LED with 1 second delay.
 void loop1() {
     for (;;) // explicitly run forever without returning
@@ -134,4 +113,25 @@ void loop3() {
         taskToken = 1;
         taskSema.post();
     }
+}
+
+BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task1("l1", loop1);
+BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task2("l2", loop2);
+BasicCoopTask<CoopTaskStackAllocatorFromLoop<40>> task3("l3", loop3, 40);
+
+void setup() {
+    //Serial.begin(9600);
+    // Setup the 3 pins as OUTPUT
+    pinMode(LED_BUILTIN, OUTPUT);
+
+    // Add "loop1", "loop2" and "loop3" to CoopTask scheduling.
+    // "loop" is always started by default, and is not under the control of CoopTask. 
+    task1.scheduleTask();
+    task2.scheduleTask();
+    task3.scheduleTask();
+}
+
+void loop() {
+    // loops forever by default
+    runCoopTasks();
 }
