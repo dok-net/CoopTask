@@ -71,8 +71,9 @@ protected:
 #else
     CoopTaskBase(const std::string& name, taskfunction_t _func, size_t stackSize = DEFAULTTASKSTACKSIZE) :
 #endif
-        taskName(name), taskStackSize(stackSize), sleeps(true), delays(false), func(_func)
+        taskName(name), sleeps(true), delays(false), func(_func)
     {
+        taskStackSize = (sizeof(unsigned) >= 4) ? ((stackSize + sizeof(unsigned) - 1) / sizeof(unsigned)) * sizeof(unsigned) : stackSize;
     }
     CoopTaskBase(const CoopTaskBase&) = delete;
     CoopTaskBase& operator=(const CoopTaskBase&) = delete;

@@ -45,11 +45,15 @@ char* CoopTaskStackAllocator::allocateStack(size_t stackSize)
 
 char* CoopTaskStackAllocatorFromLoopBase::allocateStack(size_t loopReserve, size_t stackSize)
 {
-    char* bp = static_cast<char*>(alloca(loopReserve));
+    char* bp = static_cast<char*>(alloca(
+        (sizeof(unsigned) >= 4) ? ((loopReserve + sizeof(unsigned) - 1) / sizeof(unsigned)) * sizeof(unsigned) : loopReserve
+    ));
+    std::atomic_thread_fence(std::memory_order_release);
     char* stackTop = nullptr;
     if (stackSize <= CoopTaskBase::MAXSTACKSPACE - (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE))
     {
-        stackTop = bp - (stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE));
+        stackTop = reinterpret_cast<char*>(
+            reinterpret_cast<long unsigned>(bp) - stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE));
     }
     return stackTop;
 }

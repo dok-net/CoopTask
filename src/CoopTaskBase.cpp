@@ -663,10 +663,13 @@ int32_t CoopTaskBase::initialize()
     asm volatile (
         "movq %0, %%rsp"
         :
-        : "r" ((((long unsigned)taskStackTop + taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) >> 4 ) << 4)
-    );
+    : "r" (((reinterpret_cast<long unsigned>(taskStackTop) + taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) >> 4) << 4)
+        );
 #elif defined(ARDUINO) || defined(__GNUC__)
-    char* bp = static_cast<char*>(alloca(reinterpret_cast<char*>(&bp) - (taskStackTop + taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0))));
+    char* bp = static_cast<char*>(alloca(
+        reinterpret_cast<long unsigned>(&bp) - reinterpret_cast<long unsigned>(taskStackTop) - (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0))
+    ));
+    std::atomic_thread_fence(std::memory_order_release);
 #else
 #error Setting stack pointer is not implemented on this target
 #endif

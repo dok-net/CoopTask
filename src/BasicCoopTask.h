@@ -36,14 +36,16 @@ template<size_t StackSize = CoopTaskBase::DEFAULTTASKSTACKSIZE>
 class CoopTaskStackAllocatorAsMember
 {
 public:
-    static constexpr size_t DEFAULTTASKSTACKSIZE = StackSize;
+    static constexpr size_t DEFAULTTASKSTACKSIZE =
+        (sizeof(unsigned) >= 4) ? ((StackSize + sizeof(unsigned) - 1) / sizeof(unsigned)) * sizeof(unsigned) : StackSize;
+
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
 protected:
-    char _stackTop[StackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE)];
+    char _stackTop[DEFAULTTASKSTACKSIZE + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE)];
 public:
     char* allocateStack(size_t stackSize)
     {
-        return (StackSize >= stackSize) ?
+        return (DEFAULTTASKSTACKSIZE >= stackSize) ?
             _stackTop : nullptr;
     }
     static void disposeStack(char* stackTop) { }
@@ -86,7 +88,7 @@ public:
         CoopTaskBase(name, _func, stackSize)
     {
 #if !defined(_MSC_VER) && !defined(ESP32_FREERTOS)
-        taskStackTop = stackAllocator.allocateStack(stackSize);
+        taskStackTop = stackAllocator.allocateStack(taskStackSize);
 #endif
     }
     BasicCoopTask(const BasicCoopTask&) = delete;

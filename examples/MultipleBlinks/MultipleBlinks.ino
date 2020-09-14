@@ -28,6 +28,12 @@
 #define LED_BUILTIN 1
 #endif
 
+#if defined(ARDUINO_AVR_MICRO)
+#define STACKSIZE_8BIT 92
+#else
+#define STACKSIZE_8BIT 40
+#endif
+
 CoopSemaphore taskSema(1, 1);
 int taskToken = 1;
 
@@ -115,9 +121,9 @@ void loop3() {
     }
 }
 
-BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task1("l1", loop1);
-BasicCoopTask<CoopTaskStackAllocatorAsMember<42>> task2("l2", loop2);
-BasicCoopTask<CoopTaskStackAllocatorFromLoop<40>> task3("l3", loop3, 40);
+BasicCoopTask<CoopTaskStackAllocatorAsMember<sizeof(unsigned) >= 4 ? 800 : STACKSIZE_8BIT>> task1("l1", loop1);
+BasicCoopTask<CoopTaskStackAllocatorAsMember<sizeof(unsigned) >= 4 ? 800 : STACKSIZE_8BIT>> task2("l2", loop2);
+BasicCoopTask<CoopTaskStackAllocatorFromLoop<sizeof(unsigned) >= 4 ? 800 : STACKSIZE_8BIT>> task3("l3", loop3, sizeof(unsigned) >= 4 ? 800 : STACKSIZE_8BIT);
 
 void setup() {
     //Serial.begin(9600);
