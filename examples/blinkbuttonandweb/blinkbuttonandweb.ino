@@ -19,11 +19,7 @@ WebServer server(80);
 #endif
 
 #if !defined(ESP8266) && !defined(ESP32)
-#define ICACHE_RAM_ATTR
-#endif
-
-#ifndef IRAM_ATTR
-#define IRAM_ATTR ICACHE_RAM_ATTR
+#define IRAM_ATTR
 #endif
 
 #if defined(ESP8266)

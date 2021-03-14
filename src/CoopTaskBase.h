@@ -50,7 +50,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #if !defined(ESP32) && !defined(ESP8266)
-#define ICACHE_RAM_ATTR
 #define IRAM_ATTR
 #endif
 
