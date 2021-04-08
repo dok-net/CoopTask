@@ -97,6 +97,9 @@ void setup() {
                 }
                 yield();
             }
+            CoopMutexLock serialLock(serialMutex);
+            Serial.print("exiting from task ");
+            Serial.println(CoopTaskBase::self()->name());
             return 0;
         }
 #if defined(ESP8266) || defined(ESP32)
@@ -144,6 +147,9 @@ void setup() {
                 }
                 yield();
             }
+            CoopMutexLock serialLock(serialMutex);
+            Serial.print("exiting from task ");
+            Serial.println(CoopTaskBase::self()->name());
             return 0;
         }
 #if defined(ESP8266) || defined(ESP32)
@@ -202,6 +208,9 @@ void setup() {
                 }
                 yield();
             }
+            CoopMutexLock serialLock(serialMutex);
+            Serial.print("exiting from task ");
+            Serial.println(CoopTaskBase::self()->name());
             return 0;
         }
 #if defined(ESP8266) || defined(ESP32)
@@ -218,8 +227,6 @@ void setup() {
 
 void taskReaper(const CoopTaskBase* const task)
 {
-    Serial.print("deleting task ");
-    Serial.println(task->name());
     delete task;
 }
 

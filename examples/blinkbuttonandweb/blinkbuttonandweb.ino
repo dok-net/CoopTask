@@ -41,6 +41,10 @@ constexpr auto LEDOFF = LOW;
 
 #define USE_BUILTIN_TASK_SCHEDULER
 
+CoopMutex serialMutex;
+
+CoopSemaphore blinkSema(0);
+
 #if defined(ESP8266) || defined(ESP32)
 class Button {
 protected:
@@ -69,6 +73,7 @@ public:
 
     unsigned testResetPressed() {
         if (pressed) {
+            CoopMutexLock serialLock(serialMutex);
             Serial.printf("Button on pin %u has been pressed %u times\n", PIN, numberKeyPresses);
             pressed = false;
         }
@@ -81,10 +86,6 @@ private:
     volatile bool pressed = false;
 };
 #endif
-
-CoopMutex serialMutex;
-
-CoopSemaphore blinkSema(0);
 
 void loopBlink() noexcept
 {
@@ -107,6 +108,7 @@ void loopButton() noexcept
     {
         if (!button1->pushSema.wait())
         {
+            CoopMutexLock serialLock(serialMutex);
             Serial.println("loopButton: wait failed");
             yield();
             continue;
@@ -117,7 +119,6 @@ void loopButton() noexcept
         }
         {
             CoopMutexLock serialLock(serialMutex);
-
             Serial.print("loopButton: count = ");
             Serial.println(count);
         }
@@ -286,9 +287,15 @@ void setup()
     taskText = new CoopTask<unsigned>(F("Text"), []() -> unsigned
         {
             RAIITest raii;
-            Serial.println("Task1 - A");
+            {
+                CoopMutexLock serialLock(serialMutex);
+                Serial.println("Task1 - A");
+            }
             yield();
-            Serial.println("Task1 - B");
+            {
+                CoopMutexLock serialLock(serialMutex);
+                Serial.println("Task1 - B");
+            }
             uint32_t start = millis();
             CoopTask<>::delay(6000);
             {
@@ -300,6 +307,9 @@ void setup()
 #if !defined(ARDUINO)
             throw static_cast<unsigned>(41);
 #endif
+            CoopMutexLock serialLock(serialMutex);
+            Serial.print("exiting from task ");
+            Serial.println(CoopTaskBase::self()->name());
             //CoopTask<unsigned>::exit(42);
             return 43;
         }
@@ -406,7 +416,6 @@ void taskReaper(const CoopTaskBase* const task)
 {
     if (task == taskText)
     {
-        Serial.print(task->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
         delete task;
         taskText = nullptr;
     }
