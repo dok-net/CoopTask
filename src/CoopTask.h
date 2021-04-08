@@ -75,7 +75,7 @@ public:
     /// @returns: The exit code is either the return value of of the task function, or set by using the exit() function.
     Result exitCode() const noexcept { return _exitCode; }
 
-    /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+    /// @returns: a pointer to the CoopTask instance that is running. nullptr if not called from a CoopTask function (running() == false).
     static CoopTask* self() noexcept { return static_cast<CoopTask*>(BasicCoopTask<StackAllocator>::self()); }
 
     /// Use only in running CoopTask function. As stack unwinding is corrupted
@@ -105,7 +105,7 @@ public:
     {
     }
 
-    /// @returns: a reference to CoopTask instance that is running. Undefined if not called from a CoopTask function (running() == false).
+    /// @returns: a pointer to the CoopTask instance that is running. nullptr if not called from a CoopTask function (running() == false).
     static CoopTask* self() noexcept { return static_cast<CoopTask*>(BasicCoopTask<StackAllocator>::self()); }
 };
 
