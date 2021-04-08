@@ -417,9 +417,7 @@ void loop()
 #if defined(ESP8266) && defined(USE_BUILTIN_TASK_SCHEDULER)
     if (taskText && !*taskText)
     {
-        Serial.print(taskText->name()); Serial.print(" returns = "); Serial.println(taskText->exitCode());
-        delete taskText;
-        taskText = nullptr;
+        taskReaper(taskText);
     }
 #else
     runCoopTasks(taskReaper);
