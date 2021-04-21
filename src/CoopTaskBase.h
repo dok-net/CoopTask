@@ -255,8 +255,14 @@ inline void delay(uint32_t ms) { CoopTaskBase::delay(ms); }
 /// @param onDelay An optional function to handle a global delay greater or equal 1 millisecond, resulting
 /// from the minimum time interval for which at this time all CoopTasks are delayed.
 /// This can be used for power saving, if wake up by asynchronous events is properly considered.
-/// onDelay() returns a bool value, if true, runCoopTasks performs the default housekeeping actions
-/// in addition, otherwise it skips those.
-void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper = nullptr, const Delegate<bool(uint32_t ms)>& onDelay = nullptr);
+/// If onSleep is not set, onDelay() is called instead with the maximum value for the ms delay parameter.
+/// onDelay() must return a bool value, if true, runCoopTasks performs the default housekeeping actions,
+/// otherwise it skips those.
+/// @param onSleep An optional function indicating that all CoopTasks are sleeping, that is, are infinitely delayed.
+/// This can be used for power saving modes.
+/// onSleep(), like onDelay(), must return a bool value, if true, runCoopTasks performs the
+/// default housekeeping actions, otherwise it skips those.
+void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper = nullptr,
+    const Delegate<bool(uint32_t ms)>& onDelay = nullptr, const Delegate<bool()>& onSleep = nullptr);
 
 #endif // __CoopTaskBase_h

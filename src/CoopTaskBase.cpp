@@ -895,7 +895,8 @@ void IRAM_ATTR CoopTaskBase::sleep(const bool state) noexcept
 
 #endif // _MSC_VER
 
-void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, const Delegate<bool(uint32_t ms)>& onDelay)
+void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper,
+    const Delegate<bool(uint32_t ms)>& onDelay, const Delegate<bool()>& onSleep)
 {
 #ifdef ESP32_FREERTOS
     static TaskHandle_t yieldGuardHandle = nullptr;
@@ -912,6 +913,7 @@ void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, 
 #endif
 
     auto taskCount = CoopTaskBase::getRunnableTasksCount();
+    bool allSleeping = true;
     uint32_t minDelay_ms = ~(decltype(minDelay_ms))0U;
     for (size_t i = 0; taskCount && i < CoopTaskBase::getRunnableTasks().size(); ++i)
     {
@@ -927,24 +929,37 @@ void runCoopTasks(const Delegate<void(const CoopTaskBase* const task)>& reaper, 
                 reaper(task);
             else if (minDelay_ms)
             {
-                if (!task->suspended())
-                    minDelay_ms = 0;
-                else if (task->delayed())
+                if (task->delayed())
                 {
+                    allSleeping = false;
                     uint32_t delay_ms = task->delayIsMs() ? static_cast<uint32_t>(runResult) : static_cast<uint32_t>(runResult) / 1000UL;
                     if (delay_ms < minDelay_ms)
                         minDelay_ms = delay_ms;
+                }
+                else if (!task->sleeping())
+                {
+                    allSleeping = false;
+                    minDelay_ms = 0;
                 }
             }
         }
     }
 
-    if (minDelay_ms && (!onDelay || onDelay(minDelay_ms)))
+    bool cleanup = true;
+    if (allSleeping && onSleep)
+    {
+        cleanup = onSleep();
+    }
+    else if (minDelay_ms && onDelay)
+    {
+        cleanup = onDelay(minDelay_ms);
+    }
+    if (cleanup)
     {
 #ifdef ESP32_FREERTOS
         vTaskSuspend(yieldGuardHandle);
         vTaskDelay(1);
         vTaskResume(yieldGuardHandle);
-#endif	
+#endif
     }
 }
