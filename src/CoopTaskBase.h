@@ -167,6 +167,7 @@ public:
     /// Ready the task for scheduling, by default waking up the task from both sleep and delay.
     /// @returns: true on success.
     bool IRAM_ATTR scheduleTask(bool wakeup = true);
+    inline bool IRAM_ATTR wakeup() __attribute__((always_inline)) { return scheduleTask(true); }
 
 #ifdef ESP8266
     /// For full access to all features, cyclic task scheduling, state evaluation
