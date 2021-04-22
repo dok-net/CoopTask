@@ -101,7 +101,8 @@ protected:
     jmp_buf env_yield;
 #endif
     static constexpr size_t MAXNUMBERCOOPTASKS = FULLFEATURES ? 32 : 8;
-    static std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS> runnableTasks;
+    // for lock-free insertion, must be one element larger than max task count
+    static std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS + 1> runnableTasks;
     static std::atomic<size_t> runnableTasksCount;
     static CoopTaskBase* current;
     bool init = false;
@@ -117,7 +118,7 @@ protected:
     static bool usingBuiltinScheduler;
     bool rescheduleTask(uint32_t repeat_us);
 #endif
-    bool enrollRunnable();
+    bool IRAM_ATTR enrollRunnable();
     void delistRunnable();
 
     void _exit() noexcept;
@@ -190,7 +191,7 @@ public:
 #endif
     /// Every task is entered into this list by scheduleTask(). It is removed when it exits
     /// or gets deleted.
-    static const std::array< std::atomic<CoopTaskBase* >, MAXNUMBERCOOPTASKS>& getRunnableTasks()
+    static const decltype(runnableTasks)& getRunnableTasks()
     {
         return runnableTasks;
     }

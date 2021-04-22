@@ -101,10 +101,10 @@ public:
     }
     /// Every task is entered into this list by scheduleTask(). It is removed when it exits
     /// or gets deleted.
-    static const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS>& getRunnableTasks()
+    static const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS + 1>& getRunnableTasks()
     {
         // this is safe to do because CoopTaskBase ctor is protected.
-        return reinterpret_cast<const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS>&>(CoopTaskBase::getRunnableTasks());
+        return reinterpret_cast<const std::array< std::atomic<BasicCoopTask* >, MAXNUMBERCOOPTASKS + 1>&>(CoopTaskBase::getRunnableTasks());
     }
 protected:
     StackAllocator stackAllocator;

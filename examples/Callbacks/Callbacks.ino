@@ -4,6 +4,18 @@
 #include <CoopMutex.h>
 #include <BasicCoopTask.h>
 
+#if defined(ARDUINO_attiny)
+#define LED_BUILTIN 1
+
+struct DummySerial {
+    void print(const __FlashStringHelper* s = nullptr) {}
+    void println(const __FlashStringHelper* s = nullptr) {}
+    void println(long unsigned int) {}
+    void flush() {}
+};
+DummySerial Serial;
+#endif
+
 CoopTask<void>* blinkTask = nullptr;
 CoopTask<void>* switchTask = nullptr;
 
@@ -53,11 +65,13 @@ bool sleepCb()
 
 void setup()
 {
+#if !defined(ARDUINO_attiny)
     Serial.begin(74800);
     while (!Serial);
     delay(100);
     Serial.println();
     Serial.println(F("runTasks callback test"));
+#endif
 
     runCoopTasks(nullptr, delayCb, sleepCb);
     Serial.println(F("no tasks yet, sleepCb()?"));
@@ -78,7 +92,7 @@ void loop()
     Serial.println(F("B - both tasks delayed, delayCb(100)?"));
     yield();
     runCoopTasks(nullptr, delayCb, sleepCb);
-    Serial.println(F("C - blink task delayed, buzzer task sleeping, delayCb(4900)?"));
+    Serial.println(F("C - blink task delayed, switch task sleeping, delayCb(4900)?"));
     yield();
     runCoopTasks(nullptr, delayCb, sleepCb);
     Serial.println(F("D - both tasks sleeping, sleepCb()?"));

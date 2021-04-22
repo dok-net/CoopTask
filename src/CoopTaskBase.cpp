@@ -114,7 +114,7 @@ extern "C" {
 #endif // ESP32_FREERTOS
 }
 
-std::array< std::atomic<CoopTaskBase* >, CoopTaskBase::MAXNUMBERCOOPTASKS> CoopTaskBase::runnableTasks{};
+std::array< std::atomic<CoopTaskBase* >, CoopTaskBase::MAXNUMBERCOOPTASKS + 1> CoopTaskBase::runnableTasks {};
 std::atomic<size_t> CoopTaskBase::runnableTasksCount(0);
 
 CoopTaskBase* CoopTaskBase::current = nullptr;
@@ -174,11 +174,11 @@ bool CoopTaskBase::rescheduleTask(uint32_t repeat_us)
 }
 #endif
 
-bool CoopTaskBase::enrollRunnable()
+bool IRAM_ATTR CoopTaskBase::enrollRunnable()
 {
     bool enrolled = false;
     bool inserted = false;
-    for (size_t i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (size_t i = 0; i < runnableTasks.size(); ++i)
     {
 #if !defined(ESP32) && defined(ARDUINO)
         InterruptLock lock;
@@ -235,7 +235,7 @@ void CoopTaskBase::delistRunnable()
 {
 #if !defined(ESP32) && defined(ARDUINO)
     InterruptLock lock;
-    for (size_t i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (size_t i = 0; i < runnableTasks.size(); ++i)
     {
         if (runnableTasks[i].load() == this)
         {
@@ -245,7 +245,7 @@ void CoopTaskBase::delistRunnable()
         }
     }
 #else
-    for (size_t i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (size_t i = 0; i < runnableTasks.size(); ++i)
     {
         CoopTaskBase* self = this;
         if (runnableTasks[i].compare_exchange_strong(self, nullptr))
@@ -646,7 +646,7 @@ CoopTaskBase* CoopTaskBase::self() noexcept
     const auto currentTaskHandle = xTaskGetCurrentTaskHandle();
     auto cur = current;
     if (cur && currentTaskHandle == cur->taskHandle) return cur;
-    for (size_t i = 0; i < CoopTaskBase::MAXNUMBERCOOPTASKS; ++i)
+    for (size_t i = 0; i < runnableTasks.size(); ++i)
     {
         cur = runnableTasks[i].load();
         if (cur && currentTaskHandle == cur->taskHandle) return cur;
@@ -804,11 +804,11 @@ void CoopTaskBase::dumpStack() const
 #endif
     while (pos < (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE))
     {
+#ifndef ARDUINO_attiny
         auto* sp = &reinterpret_cast<unsigned*>(taskStackTop)[pos];
 
         // rough indicator: stack frames usually have SP saved as the second word
         bool looksLikeStackFrame = (sp[2] == reinterpret_cast<size_t>(&sp[4]));
-#ifndef ARDUINO_attiny
         ::printf(PSTR("%08x:  %08x %08x %08x %08x %c\n"),
             reinterpret_cast<size_t>(sp), sp[0], sp[1], sp[2], sp[3], looksLikeStackFrame ? '<' : ' ');
 #endif

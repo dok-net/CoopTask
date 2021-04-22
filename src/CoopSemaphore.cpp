@@ -127,21 +127,18 @@ bool CoopSemaphore::_wait(const bool withDeadline, const uint32_t ms)
             }
             if (selfFirst)
             {
-                if (!withDeadline) self->sleep(false);
                 selfFirst = false;
+                if (!withDeadline) self->sleep(false);
                 selfSuccess = true;
             }
             else if (pendingTask == self)
             {
-                if (selfSuccess)
-                {
-                    if (!stop) continue;
-                }
-                else
+                if (!selfSuccess)
                 {
                     if (!withDeadline) self->sleep(false);
                     return true;
                 }
+                if (!stop) continue;
             }
             else if (pendingTask)
             {
@@ -213,11 +210,8 @@ bool IRAM_ATTR CoopSemaphore::post()
     while (!value.compare_exchange_weak(val, val + 1)) {}
     pendingTask = pendingTask0.exchange(nullptr);
 #endif
-    if (pendingTask)
-    {
-        pendingTask->scheduleTask(true);
-    }
-    return true;
+    if (!pendingTask || !pendingTask->suspended()) return true;
+    return pendingTask->scheduleTask(true);
 }
 
 bool CoopSemaphore::setval(unsigned newVal)
