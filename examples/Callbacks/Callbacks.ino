@@ -66,7 +66,7 @@ bool sleepCb()
 void setup()
 {
 #if !defined(ARDUINO_attiny)
-    Serial.begin(74800);
+    Serial.begin(74880);
     while (!Serial);
     delay(100);
     Serial.println();
