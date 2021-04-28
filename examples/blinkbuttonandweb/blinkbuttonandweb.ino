@@ -41,6 +41,10 @@ constexpr auto LEDOFF = LOW;
 
 #define USE_BUILTIN_TASK_SCHEDULER
 
+// enter your WiFi configuration below
+static const char AP_SSID[] PROGMEM = "SSID";  // your router's SSID here 
+static const char AP_PASS[] PROGMEM = "PSK";  // your router's password here
+
 CoopMutex serialMutex;
 
 CoopSemaphore blinkSema(0);
@@ -74,7 +78,7 @@ public:
     unsigned testResetPressed() {
         if (pressed) {
             CoopMutexLock serialLock(serialMutex);
-            Serial.printf("Button on pin %u has been pressed %u times\n", PIN, numberKeyPresses);
+            Serial.printf_P(PSTR("Button on pin %u has been pressed %u times\n"), PIN, numberKeyPresses);
             pressed = false;
         }
         return numberKeyPresses;
@@ -109,7 +113,7 @@ void loopButton() noexcept
         if (!button1->pushSema.wait())
         {
             CoopMutexLock serialLock(serialMutex);
-            Serial.println("loopButton: wait failed");
+            Serial.println(F("loopButton: wait failed"));
             yield();
             continue;
         }
@@ -119,7 +123,7 @@ void loopButton() noexcept
         }
         {
             CoopMutexLock serialLock(serialMutex);
-            Serial.print("loopButton: count = ");
+            Serial.print(F("loopButton: count = "));
             Serial.println(count);
         }
         if (nullptr != button1 && 8000 < button1->testResetPressed()) {
@@ -132,22 +136,22 @@ void loopButton() noexcept
 }
 
 void handleRoot() {
-    server.send(200, "text/plain", "hello from esp8266!");
+    server.send(200, F("text/plain"), F("hello from esp8266!"));
 }
 
 void handleNotFound() {
-    String message = "File Not Found\n\n";
-    message += "URI: ";
+    String message = F("File Not Found\n\n");
+    message += F("URI: ");
     message += server.uri();
-    message += "\nMethod: ";
-    message += (server.method() == HTTP_GET) ? "GET" : "POST";
-    message += "\nArguments: ";
+    message += F("\nMethod: ");
+    message += (server.method() == HTTP_GET) ? F("GET") : F("POST");
+    message += F("\nArguments: ");
     message += server.args();
     message += "\n";
     for (uint8_t i = 0; i < server.args(); i++) {
-        message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+        message += ' ' + server.argName(i) + F(": ") + server.arg(i) + '\n';
     }
-    server.send(404, "text/plain", message);
+    server.send(404, F("text/plain"), message);
 }
 #endif
 
@@ -170,7 +174,7 @@ void printStackReport(CoopTaskBase* task)
 {
     if (!task) return;
     Serial.print(task->name().c_str());
-    Serial.print(" free stack = ");
+    Serial.print(F(" free stack = "));
     Serial.println(task->getFreeStack());
 }
 
@@ -181,14 +185,14 @@ uint32_t start;
 void printReport()
 {
     //CoopTask<>::delayMicroseconds(4000000);
-    Serial.print("cycle period/us = ");
+    Serial.print(F("cycle period/us = "));
     if (iterations)
     {
         Serial.println(1.0F * (micros() - start) / iterations);
     }
     else
     {
-        Serial.println("N/A");
+        Serial.println(F("N/A"));
     }
 #if defined(ESP8266) || defined(ESP32)
     printStackReport(taskButton);
@@ -210,7 +214,7 @@ public:
     {
         CoopMutexLock serialLock(serialMutex);
         Serial.print(CoopTaskBase::self()->name());
-        Serial.println(" stack unwound, RAIITest object destructed");
+        Serial.println(F(" stack unwound, RAIITest object destructed"));
     }
 };
 
@@ -224,35 +228,35 @@ void setup()
     while (!Serial) {}
     delay(500);
 
-    Serial.println("Scheduler test");
+    Serial.println(F("Scheduler test"));
 
 #if defined(ESP8266) || defined(ESP32)
     WiFi.mode(WIFI_STA);
-    WiFi.begin();
+    WiFi.begin(FPSTR(AP_SSID), FPSTR(AP_PASS));
 
     // Wait for connection
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
-        Serial.print(".");
+        Serial.print('.');
     }
-    Serial.println("");
-    Serial.print("IP address: ");
+    Serial.println();
+    Serial.print(F("IP address: "));
     Serial.println(WiFi.localIP());
 
-    if (MDNS.begin("esp")) {
-        Serial.println("MDNS responder started");
+    if (MDNS.begin(F("esp"))) {
+        Serial.println(F("MDNS responder started"));
     }
 
-    server.on("/", handleRoot);
+    server.on(F("/"), handleRoot);
 
-    server.on("/inline", []() {
-        server.send(200, "text/plain", "this works as well");
+    server.on(F("/inline"), []() {
+        server.send(200, F("text/plain"), F("this works as well"));
         });
 
     server.onNotFound(handleNotFound);
 
     server.begin();
-    Serial.println("HTTP server started");
+    Serial.println(F("HTTP server started"));
 #endif
 
 
@@ -271,7 +275,7 @@ void setup()
 #elif defined(ESP32)
         0x940);
 #endif
-    if (!*taskButton) Serial.printf("CoopTask %s out of stack\n", taskButton->name().c_str());
+    if (!*taskButton) Serial.printf_P(PSTR("CoopTask %s out of stack\n"), taskButton->name().c_str());
 #endif
 
     taskBlink = new CoopTask<void, CoopTaskStackAllocatorFromLoop<>>(F("Blink"), loopBlink,
@@ -282,25 +286,25 @@ void setup()
 #else
         0x40);
 #endif
-    if (!*taskBlink) Serial.println("CoopTask Blink out of stack");
+    if (!*taskBlink) Serial.println(F("CoopTask Blink out of stack"));
 
     taskText = new CoopTask<unsigned>(F("Text"), []() -> unsigned
         {
             RAIITest raii;
             {
                 CoopMutexLock serialLock(serialMutex);
-                Serial.println("Task1 - A");
+                Serial.println(F("Task1 - A"));
             }
             yield();
             {
                 CoopMutexLock serialLock(serialMutex);
-                Serial.println("Task1 - B");
+                Serial.println(F("Task1 - B"));
             }
             uint32_t start = millis();
             CoopTask<>::delay(6000);
             {
                 CoopMutexLock serialLock(serialMutex);
-                Serial.print("!!!Task1 - C - ");
+                Serial.print(F("!!!Task1 - C - "));
                 Serial.println(millis() - start);
                 printStackReport(taskText);
             }
@@ -308,7 +312,7 @@ void setup()
             throw static_cast<unsigned>(41);
 #endif
             CoopMutexLock serialLock(serialMutex);
-            Serial.print("exiting from task ");
+            Serial.print(F("exiting from task "));
             Serial.println(CoopTaskBase::self()->name());
             //CoopTask<unsigned>::exit(42);
             return 43;
@@ -320,7 +324,7 @@ void setup()
 #else
     , 0x70);
 #endif
-    if (!*taskText) Serial.println("CoopTask Text out of stack");
+    if (!*taskText) Serial.println(F("CoopTask Text out of stack"));
 
     auto reportFunc = []() noexcept
     {
@@ -331,7 +335,7 @@ void setup()
                 {
                     CoopMutexLock serialLock(serialMutex);
                     Serial.print(CoopTaskBase::self()->name().c_str());
-                    Serial.println(": wait failed");
+                    Serial.println(F(": wait failed"));
                 }
                 yield();
                 continue;
@@ -339,9 +343,9 @@ void setup()
             {
                 CoopMutexLock serialLock(serialMutex);
                 Serial.print(CoopTask<>::self()->name());
-                Serial.print(" (");
+                Serial.print(F(" ("));
                 Serial.print(++count);
-                Serial.println("x)");
+                Serial.println(F("x)"));
                 printReport();
             }
             yield();
@@ -354,29 +358,29 @@ void setup()
 #else
         , 0x70);
 #endif
-    if (!*taskReport0) Serial.println("CoopTask Report out of stack");
+    if (!*taskReport0) Serial.println(F("CoopTask Report out of stack"));
     taskReport1 = new CoopTask<void>(F("Report1"), reportFunc
 #if defined(ESP8266) || defined(ESP32)
         , 0x600);
 #else
         , 0x70);
 #endif
-    if (!*taskReport1) Serial.println("CoopTask Report out of stack");
+    if (!*taskReport1) Serial.println(F("CoopTask Report out of stack"));
     taskReport2 = new CoopTask<void>(F("Report2"), reportFunc
 #if defined(ESP8266) || defined(ESP32)
         , 0x600);
 #else
         , 0x70);
 #endif
-    if (!*taskReport2) Serial.println("CoopTask Report out of stack");
+    if (!*taskReport2) Serial.println(F("CoopTask Report out of stack"));
 
 #if defined(ESP8266) || defined(ESP32)
     taskReport3 = new CoopTask<void>(F("Report3"), reportFunc
         , 0x600);
-    if (!*taskReport3) Serial.println("CoopTask Report out of stack");
+    if (!*taskReport3) Serial.println(F("CoopTask Report out of stack"));
     taskReport4 = new CoopTask<void>(F("Report4"), reportFunc
         , 0x600);
-    if (!*taskReport4) Serial.println("CoopTask Report out of stack");
+    if (!*taskReport4) Serial.println(F("CoopTask Report out of stack"));
 
     taskWeb = new CoopTask<void>(F("Web"), []() noexcept
         {
@@ -393,22 +397,22 @@ void setup()
 #else
         0xa00);
 #endif
-    if (!*taskWeb) Serial.printf("CoopTask %s out of stack\n", taskWeb->name().c_str());
+    if (!*taskWeb) Serial.printf_P(PSTR("CoopTask %s out of stack\n"), taskWeb->name().c_str());
 
-    if (!taskButton->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskButton->name().c_str()); }
-    if (!taskReport3->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskReport3->name().c_str()); }
-    if (!taskReport4->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskReport4->name().c_str()); }
-    if (!taskWeb->scheduleTask()) { Serial.printf("Could not schedule task %s\n", taskWeb->name().c_str()); }
+    if (!taskButton->scheduleTask()) { Serial.printf_P(PSTR("Could not schedule task %s\n"), taskButton->name().c_str()); }
+    if (!taskReport3->scheduleTask()) { Serial.printf_P(PSTR("Could not schedule task %s\n"), taskReport3->name().c_str()); }
+    if (!taskReport4->scheduleTask()) { Serial.printf_P(PSTR("Could not schedule task %s\n"), taskReport4->name().c_str()); }
+    if (!taskWeb->scheduleTask()) { Serial.printf_P(PSTR("Could not schedule task %s\n"), taskWeb->name().c_str()); }
 #endif
 
-    if (!taskBlink->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskBlink->name().c_str()); }
-    if (!taskText->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskText->name().c_str()); }
-    if (!taskReport0->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport0->name().c_str()); }
-    if (!taskReport1->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport1->name().c_str()); }
-    if (!taskReport2->scheduleTask()) { Serial.print("Could not schedule task "); Serial.println(taskReport2->name().c_str()); }
+    if (!taskBlink->scheduleTask()) { Serial.print(F("Could not schedule task ")); Serial.println(taskBlink->name().c_str()); }
+    if (!taskText->scheduleTask()) { Serial.print(F("Could not schedule task ")); Serial.println(taskText->name().c_str()); }
+    if (!taskReport0->scheduleTask()) { Serial.print(F("Could not schedule task ")); Serial.println(taskReport0->name().c_str()); }
+    if (!taskReport1->scheduleTask()) { Serial.print(F("Could not schedule task ")); Serial.println(taskReport1->name().c_str()); }
+    if (!taskReport2->scheduleTask()) { Serial.print(F("Could not schedule task ")); Serial.println(taskReport2->name().c_str()); }
 
 #ifdef ESP32
-    Serial.print("Loop free stack = "); Serial.println(uxTaskGetStackHighWaterMark(NULL));
+    Serial.print(F("Loop free stack = ")); Serial.println(uxTaskGetStackHighWaterMark(NULL));
 #endif
 }
 
