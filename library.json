@@ -1,6 +1,6 @@
 {
     "name": "CoopTask",
-    "version": "3.6.4",
+    "version": "3.7.0",
     "description": "Portable C++ library for cooperative multitasking like Arduino Scheduler on ESP8266/ESP32, AVR, Linux, Windows",
     "keywords": [
         "multitasking", "timing"
