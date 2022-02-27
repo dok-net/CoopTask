@@ -53,6 +53,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define IRAM_ATTR
 #endif
 
+#if !defined(ARDUINO)
+#define PSTR(x) x
+#endif
+
 #ifdef _MSC_VER
 #define __attribute__(_)
 #endif
