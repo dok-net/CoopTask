@@ -30,7 +30,7 @@ char* CoopTaskStackAllocator::allocateStack(size_t stackSize)
     char* stackTop = nullptr;
     if (stackSize <= CoopTaskBase::MAXSTACKSPACE - (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE))
     {
-#if defined(ESP8266) || defined(ARDUINO_TEENSY41)
+#if defined(ESP8266)
         stackTop = new (std::nothrow) char[stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE)];
 #else
         stackTop = new char[stackSize + (CoopTaskBase::FULLFEATURES ? 2 : 1) * sizeof(CoopTaskBase::STACKCOOKIE)];

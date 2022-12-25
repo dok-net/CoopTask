@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define IRAM_ATTR
 #endif
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
 #include <functional>
 #include <cstddef>
 #else
@@ -52,7 +52,7 @@ namespace delegate
     namespace detail
     {
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
         template<typename A, typename R, typename... P>
         class DelegatePImpl {
         public:
@@ -559,7 +559,7 @@ namespace delegate
         };
 #endif
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
         template<typename R, typename... P>
         class DelegatePImpl<void, R, P...> {
         public:
@@ -853,7 +853,7 @@ namespace delegate
         };
 #endif
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
         template<typename A, typename R>
         class DelegateImpl {
         public:
@@ -1358,7 +1358,7 @@ namespace delegate
         };
 #endif
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
         template<typename R>
         class DelegateImpl<void, R> {
         public:
@@ -1661,7 +1661,7 @@ namespace delegate
             using FunPtr = target_type*;
             using FunAPtr = R(*)(A, P...);
             using FunVPPtr = R(*)(void*, P...);
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             using FunctionType = std::function<target_type>;
 #endif
         public:
@@ -1670,7 +1670,7 @@ namespace delegate
             using detail::DelegatePImpl<A, R, P...>::operator();
 
             operator FunVPPtr() { return detail::DelegatePImpl<A, R, P...>::operator FunVPPtr(); }
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             operator FunctionType() { return detail::DelegatePImpl<A, R, P...>::operator FunctionType(); }
 #endif
 
@@ -1722,7 +1722,7 @@ namespace delegate
             using FunPtr = target_type*;
             using FunAPtr = R(*)(A*, P...);
             using FunVPPtr = R(*)(void*, P...);
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             using FunctionType = std::function<target_type>;
 #endif
         public:
@@ -1740,7 +1740,7 @@ namespace delegate
                     return detail::DelegatePImpl<A*, R, P...>::operator FunVPPtr();
                 }
             }
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             operator FunctionType() { return detail::DelegatePImpl<A*, R, P...>::operator FunctionType(); }
 #endif
             void* arg() const
@@ -1799,7 +1799,7 @@ namespace delegate
             using target_type = R(P...);
         protected:
             using FunPtr = target_type*;
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             using FunctionType = std::function<target_type>;
 #endif
             using FunVPPtr = R(*)(void*, P...);
@@ -1809,7 +1809,7 @@ namespace delegate
             using detail::DelegatePImpl<void, R, P...>::operator();
 
             operator FunVPPtr() const { return detail::DelegatePImpl<void, R, P...>::operator FunVPPtr(); }
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             operator FunctionType() { return detail::DelegatePImpl<void, R, P...>::operator FunctionType(); }
 #endif
 
@@ -1857,7 +1857,7 @@ namespace delegate
             using FunPtr = target_type*;
             using FunAPtr = R(*)(A);
             using FunVPPtr = R(*)(void*);
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             using FunctionType = std::function<target_type>;
 #endif
         public:
@@ -1866,7 +1866,7 @@ namespace delegate
             using detail::DelegateImpl<A, R>::operator();
 
             operator FunVPPtr() { return detail::DelegateImpl<A, R>::operator FunVPPtr(); }
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             operator FunctionType() { return detail::DelegateImpl<A, R>::operator FunctionType(); }
 #endif
 
@@ -1918,7 +1918,7 @@ namespace delegate
             using FunPtr = target_type*;
             using FunAPtr = R(*)(A*);
             using FunVPPtr = R(*)(void*);
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             using FunctionType = std::function<target_type>;
 #endif
         public:
@@ -1936,7 +1936,7 @@ namespace delegate
                     return detail::DelegateImpl<A*, R>::operator FunVPPtr();
                 }
             }
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             operator FunctionType() { return detail::DelegateImpl<A*, R>::operator FunctionType(); }
 #endif
             void* arg() const
@@ -1995,7 +1995,7 @@ namespace delegate
             using target_type = R();
         protected:
             using FunPtr = target_type*;
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             using FunctionType = std::function<target_type>;
 #endif
             using FunVPPtr = R(*)(void*);
@@ -2005,7 +2005,7 @@ namespace delegate
             using detail::DelegateImpl<void, R>::operator();
 
             operator FunVPPtr() const { return detail::DelegateImpl<void, R>::operator FunVPPtr(); }
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
             operator FunctionType() { return detail::DelegateImpl<void, R>::operator FunctionType(); }
 #endif
 

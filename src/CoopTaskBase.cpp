@@ -72,7 +72,7 @@ extern "C" {
 
     void __esp_suspend();
 
-    // disable CONT suspend, resume by esp_schedule pattern
+    // disable the CONT suspend, resume by esp_schedule pattern
     void esp_suspend()
     {
         auto self = CoopTaskBase::self();
@@ -82,7 +82,7 @@ extern "C" {
 
     void __esp_delay(unsigned long ms);
 
-    // disable CONT suspend, resume by esp_schedule pattern
+    // disable the CONT suspend, resume by esp_schedule pattern
     void esp_delay(unsigned long ms)
     {
         auto self = CoopTaskBase::self();
@@ -739,7 +739,7 @@ int32_t CoopTaskBase::run()
         if (!init) return initialize();
         if (FULLFEATURES && *reinterpret_cast<unsigned*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) != STACKCOOKIE)
         {
-#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO_attiny)
             ::printf(PSTR("FATAL ERROR: CoopTask %s stack corrupted\n"), name().c_str());
 #endif
             ::abort();
@@ -752,7 +752,7 @@ int32_t CoopTaskBase::run()
         current = nullptr;
         if (*reinterpret_cast<unsigned*>(taskStackTop) != STACKCOOKIE)
         {
-#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO_attiny)
             ::printf(PSTR("FATAL ERROR: CoopTask %s stack overflow\n"), name().c_str());
 #endif
             ::abort();
@@ -787,12 +787,12 @@ void CoopTaskBase::dumpStack() const
         if (STACKCOOKIE != reinterpret_cast<unsigned*>(taskStackTop)[pos])
             break;
     }
-#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO_attiny)
     ::printf(PSTR(">>>stack>>>\n"));
 #endif
     while (pos < (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE))
     {
-#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO_attiny)
         auto* sp = &reinterpret_cast<unsigned*>(taskStackTop)[pos];
 
         // rough indicator: stack frames usually have SP saved as the second word
@@ -803,7 +803,7 @@ void CoopTaskBase::dumpStack() const
 
         pos += 4;
     }
-#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
+#if !defined(ARDUINO_attiny)
     ::printf(PSTR("<<<stack<<<\n"));
 #endif
 }
