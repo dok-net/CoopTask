@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #include "circular_queue/Delegate.h"
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
 #include <array>
 #include <memory>
 #include <csetjmp>
@@ -43,7 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 #endif
 
-#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
+#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
 #include <atomic>
 #else
 #include "circular_queue/ghostl.h"

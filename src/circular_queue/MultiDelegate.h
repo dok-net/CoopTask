@@ -199,7 +199,7 @@ namespace delegate
                 // if no unused items, and count not too high, allocate a new one
                 else if (nodeCount < QUEUE_CAPACITY)
                 {
-#if defined(ESP8266) || defined(ESP32)            	
+#if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
                     result = new (std::nothrow) Node_t;
 #else
                     result = new Node_t;
@@ -298,7 +298,7 @@ namespace delegate
 #endif
 
                 Node_t* item = ISQUEUE ? get_node_unsafe() :
-#if defined(ESP8266) || defined(ESP32)            	
+#if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
                     new (std::nothrow) Node_t;
 #else
                     new Node_t;
@@ -390,7 +390,7 @@ namespace delegate
                         it = erase(it);
                     else
                         ++it;
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
                     // running callbacks might last too long for watchdog etc.
                     optimistic_yield(10000);
 #endif
@@ -430,7 +430,7 @@ namespace delegate
                         it = this->erase(it);
                     else
                         ++it;
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
                     // running callbacks might last too long for watchdog etc.
                     optimistic_yield(10000);
 #endif
@@ -485,7 +485,7 @@ namespace delegate
                         it = this->erase(it);
                     else
                         ++it;
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
                     // running callbacks might last too long for watchdog etc.
                     optimistic_yield(10000);
 #endif
@@ -523,7 +523,7 @@ namespace delegate
                         it = this->erase(it);
                     else
                         ++it;
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_TEENSY41)
                     // running callbacks might last too long for watchdog etc.
                     optimistic_yield(10000);
 #endif

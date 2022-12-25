@@ -739,7 +739,7 @@ int32_t CoopTaskBase::run()
         if (!init) return initialize();
         if (FULLFEATURES && *reinterpret_cast<unsigned*>(taskStackTop + taskStackSize + sizeof(STACKCOOKIE)) != STACKCOOKIE)
         {
-#ifndef ARDUINO_attiny
+#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
             ::printf(PSTR("FATAL ERROR: CoopTask %s stack corrupted\n"), name().c_str());
 #endif
             ::abort();
@@ -752,7 +752,7 @@ int32_t CoopTaskBase::run()
         current = nullptr;
         if (*reinterpret_cast<unsigned*>(taskStackTop) != STACKCOOKIE)
         {
-#ifndef ARDUINO_attiny
+#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
             ::printf(PSTR("FATAL ERROR: CoopTask %s stack overflow\n"), name().c_str());
 #endif
             ::abort();
@@ -787,12 +787,12 @@ void CoopTaskBase::dumpStack() const
         if (STACKCOOKIE != reinterpret_cast<unsigned*>(taskStackTop)[pos])
             break;
     }
-#ifndef ARDUINO_attiny
+#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
     ::printf(PSTR(">>>stack>>>\n"));
 #endif
     while (pos < (taskStackSize + (FULLFEATURES ? sizeof(STACKCOOKIE) : 0)) / sizeof(STACKCOOKIE))
     {
-#ifndef ARDUINO_attiny
+#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
         auto* sp = &reinterpret_cast<unsigned*>(taskStackTop)[pos];
 
         // rough indicator: stack frames usually have SP saved as the second word
@@ -803,7 +803,7 @@ void CoopTaskBase::dumpStack() const
 
         pos += 4;
     }
-#ifndef ARDUINO_attiny
+#if !defined(ARDUINO_attiny) && !defined(ARDUINO_TEENSY41)
     ::printf(PSTR("<<<stack<<<\n"));
 #endif
 }
