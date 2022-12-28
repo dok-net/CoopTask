@@ -61,15 +61,6 @@ extern "C" {
 #endif
 
 #if defined(ESP8266)
-    void __delay(unsigned long ms);
-
-    void delay(unsigned long ms)
-    {
-        auto self = CoopTaskBase::self();
-        if (self) CoopTaskBase::delay(self, ms);
-        else __delay(ms);
-    }
-
     void __esp_suspend();
 
     // disable the CONT suspend, resume by esp_schedule pattern
@@ -86,7 +77,7 @@ extern "C" {
     void esp_delay(unsigned long ms)
     {
         auto self = CoopTaskBase::self();
-        if (self) CoopTaskBase::yield(self);
+        if (self) CoopTaskBase::delay(self, ms);
         else __esp_delay(ms);
     }
 
