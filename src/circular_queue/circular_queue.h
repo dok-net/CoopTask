@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <Arduino.h>
 #endif
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 #include <atomic>
 #include <memory>
 #include <algorithm>
@@ -108,7 +108,7 @@ public:
     /*!
         @brief	Get a snapshot number of elements that can be retrieved by pop.
     */
-    size_t available() const
+    inline size_t IRAM_ATTR available() const __attribute__((always_inline))
     {
         int avail = static_cast<int>(m_inPos.load() - m_outPos.load());
         if (avail < 0) avail += m_bufSize;
@@ -118,7 +118,7 @@ public:
     /*!
         @brief	Get the remaining free elementes for pushing.
     */
-    size_t available_for_push() const
+    inline size_t IRAM_ATTR available_for_push() const __attribute__((always_inline))
     {
         int avail = static_cast<int>(m_outPos.load() - m_inPos.load()) - 1;
         if (avail < 0) avail += m_bufSize;
@@ -201,7 +201,7 @@ public:
         return push(std::move(v));
     }
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     /*!
         @brief	Push copies of multiple elements from a buffer into the queue,
                 in order, beginning at buffer's head.
@@ -218,7 +218,7 @@ public:
     */
     T pop();
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     /*!
         @brief	Pop multiple elements in ordered sequence from the queue to a buffer.
                 If buffer is nullptr, simply discards up to size elements from the queue.
@@ -232,7 +232,7 @@ public:
         @brief	Iterate over and remove each available element from queue,
                 calling back fun with an rvalue reference of every single element.
     */
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     void for_each(const Delegate<void(T&&), ForEachArg>& fun);
 #else
     void for_each(Delegate<void(T&&), ForEachArg> fun);
@@ -244,7 +244,7 @@ public:
                 Requeuing is dependent on the return boolean of the callback function. If it
                 returns true, the requeue occurs.
     */
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     bool for_each_rev_requeue(const Delegate<bool(T&), ForEachArg>& fun);
 #else
     bool for_each_rev_requeue(Delegate<bool(T&), ForEachArg> fun);
@@ -253,7 +253,7 @@ public:
 protected:
     const T defaultValue = {};
     size_t m_bufSize;
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
     std::unique_ptr<T[]> m_buffer;
 #else
     std::unique_ptr<T> m_buffer;
@@ -277,7 +277,7 @@ bool circular_queue<T, ForEachArg>::capacity(const size_t cap)
     return true;
 }
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 template< typename T, typename ForEachArg >
 size_t circular_queue<T, ForEachArg>::push_n(const T* buffer, size_t size)
 {
@@ -321,7 +321,7 @@ T circular_queue<T, ForEachArg>::pop()
     return val;
 }
 
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 template< typename T, typename ForEachArg >
 size_t circular_queue<T, ForEachArg>::pop_n(T* buffer, size_t size) {
     size_t avail = size = min(size, available());
@@ -345,7 +345,7 @@ size_t circular_queue<T, ForEachArg>::pop_n(T* buffer, size_t size) {
 #endif
 
 template< typename T, typename ForEachArg >
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 void circular_queue<T, ForEachArg>::for_each(const Delegate<void(T&&), ForEachArg>& fun)
 #else
 void circular_queue<T, ForEachArg>::for_each(Delegate<void(T&&), ForEachArg> fun)
@@ -364,7 +364,7 @@ void circular_queue<T, ForEachArg>::for_each(Delegate<void(T&&), ForEachArg> fun
 }
 
 template< typename T, typename ForEachArg >
-#if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32) || !defined(ARDUINO)
 bool circular_queue<T, ForEachArg>::for_each_rev_requeue(const Delegate<bool(T&), ForEachArg>& fun)
 #else
 bool circular_queue<T, ForEachArg>::for_each_rev_requeue(Delegate<bool(T&), ForEachArg> fun)

@@ -199,7 +199,7 @@ namespace delegate
                 // if no unused items, and count not too high, allocate a new one
                 else if (nodeCount < QUEUE_CAPACITY)
                 {
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32)            	
                     result = new (std::nothrow) Node_t;
 #else
                     result = new Node_t;
@@ -281,7 +281,7 @@ namespace delegate
                 return iterator();
             }
 
-            const Delegate* IRAM_ATTR add(const Delegate& del)
+            inline const Delegate* IRAM_ATTR add(const Delegate& del) __attribute__((always_inline))
             {
                 return add(Delegate(del));
             }
@@ -298,7 +298,7 @@ namespace delegate
 #endif
 
                 Node_t* item = ISQUEUE ? get_node_unsafe() :
-#if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32)            	
                     new (std::nothrow) Node_t;
 #else
                     new Node_t;
