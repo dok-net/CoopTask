@@ -253,7 +253,7 @@ namespace delegate
                 return *this;
             }
 
-            IRAM_ATTR operator bool() const
+            inline IRAM_ATTR operator bool() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -323,7 +323,7 @@ namespace delegate
                 }
             }
 
-            R IRAM_ATTR operator()(P... args) const
+            inline R IRAM_ATTR operator()(P... args) const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -494,7 +494,7 @@ namespace delegate
                 return *this;
             }
 
-            IRAM_ATTR operator bool() const
+            inline IRAM_ATTR operator bool() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -537,7 +537,7 @@ namespace delegate
                 }
             }
 
-            R IRAM_ATTR operator()(P... args) const
+            inline R IRAM_ATTR operator()(P... args) const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -693,7 +693,7 @@ namespace delegate
                 return *this;
             }
 
-            IRAM_ATTR operator bool() const
+            inline IRAM_ATTR operator bool() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -744,7 +744,7 @@ namespace delegate
                 }
             }
 
-            R IRAM_ATTR operator()(P... args) const
+            inline R IRAM_ATTR operator()(P... args) const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -822,7 +822,7 @@ namespace delegate
                 return *this;
             }
 
-            DelegatePImpl& IRAM_ATTR operator=(std::nullptr_t)
+            inline DelegatePImpl& IRAM_ATTR operator=(std::nullptr_t) __attribute__((always_inline))
             {
                 fn = nullptr;
                 return *this;
@@ -1054,7 +1054,7 @@ namespace delegate
                 return *this;
             }
 
-            IRAM_ATTR operator bool() const
+            inline IRAM_ATTR operator bool() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -1123,7 +1123,7 @@ namespace delegate
                 }
             }
 
-            R IRAM_ATTR operator()() const
+            inline R IRAM_ATTR operator()() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -1294,7 +1294,7 @@ namespace delegate
                 return *this;
             }
 
-            IRAM_ATTR operator bool() const
+            inline IRAM_ATTR operator bool() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -1336,7 +1336,7 @@ namespace delegate
                 }
             }
 
-            R IRAM_ATTR operator()() const
+            inline R IRAM_ATTR operator()() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -1492,7 +1492,7 @@ namespace delegate
                 return *this;
             }
 
-            IRAM_ATTR operator bool() const
+            inline IRAM_ATTR operator bool() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
@@ -1543,7 +1543,7 @@ namespace delegate
                 }
             }
 
-            R IRAM_ATTR operator()() const
+            inline R IRAM_ATTR operator()() const __attribute__((always_inline))
             {
                 if (FP == kind)
                 {
