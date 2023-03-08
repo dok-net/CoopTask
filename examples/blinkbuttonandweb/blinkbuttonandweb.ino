@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <CoopTask.h>
 #include <CoopMutex.h>
 #include <CoopSemaphore.h>
@@ -44,6 +45,7 @@ constexpr auto LEDOFF = LOW;
 // enter your WiFi configuration below
 static const char AP_SSID[] PROGMEM = "SSID";  // your router's SSID here 
 static const char AP_PASS[] PROGMEM = "PSK";  // your router's password here
+static const char MDNSNAME[] PROGMEM = "esp"; // your device's MDNS host name
 
 CoopMutex serialMutex;
 
@@ -243,7 +245,7 @@ void setup()
     Serial.print(F("IP address: "));
     Serial.println(WiFi.localIP());
 
-    if (MDNS.begin(F("esp"))) {
+    if (MDNS.begin(FPSTR(MDNSNAME))) {
         Serial.println(F("MDNS responder started"));
     }
 
