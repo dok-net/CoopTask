@@ -38,7 +38,7 @@ public:
     }
 
 protected:
-    Result _exitCode = {};
+    Result _exitCode {};
 
     static void captureFuncReturn() noexcept
     {
