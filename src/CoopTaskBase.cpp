@@ -182,7 +182,11 @@ bool IRAM_ATTR CoopTaskBase::enrollRunnable()
             break;
         }
     }
-    if (inserted) runnableTasksCount.store(runnableTasksCount.load() + 1);
+    if (inserted)
+    {
+        InterruptLock lock;
+        runnableTasksCount.store(runnableTasksCount.load() + 1);
+    }
 #else
         CoopTaskBase* cmpTo = nullptr;
         if (!enrolled && runnableTasks[i].compare_exchange_strong(cmpTo, this))
