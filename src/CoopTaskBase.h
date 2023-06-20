@@ -172,7 +172,7 @@ public:
     /// Ready the task for scheduling, by default waking up the task from both sleep and delay.
     /// @returns: true on success.
     bool IRAM_ATTR scheduleTask(bool wakeup = true);
-    inline bool IRAM_ATTR wakeup() __attribute__((always_inline)) { return scheduleTask(true); }
+    inline bool IRAM_ATTR wakeup() ALWAYS_INLINE_ATTR { return scheduleTask(true); }
 
 #ifdef ESP8266
     /// For full access to all features, cyclic task scheduling, state evaluation
@@ -231,9 +231,9 @@ public:
 
     /// @returns: true if the task's is set to sleep.
     /// For a non-running task, this implies it is also currently not scheduled.
-    inline bool IRAM_ATTR sleeping() const noexcept __attribute__((always_inline)) { return sleeps.load(); }
-    inline bool IRAM_ATTR delayed() const noexcept __attribute__((always_inline)) { return delays.load(); }
-    inline bool IRAM_ATTR suspended() const noexcept __attribute__((always_inline)) { return sleeps.load() || delays.load(); }
+    inline bool IRAM_ATTR sleeping() const noexcept ALWAYS_INLINE_ATTR { return sleeps.load(); }
+    inline bool IRAM_ATTR delayed() const noexcept ALWAYS_INLINE_ATTR { return delays.load(); }
+    inline bool IRAM_ATTR suspended() const noexcept ALWAYS_INLINE_ATTR { return sleeps.load() || delays.load(); }
 
     /// use only in running CoopTask function. As stack unwinding is corrupted
     /// by exit(), which among other issues breaks the RAII idiom,
