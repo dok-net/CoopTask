@@ -244,7 +244,7 @@ size_t circular_queue_mp<T, ForEachArg>::push_n(const T* buffer, size_t size)
             return 0;
         }
         next = (inPos_mp + blockSize) % circular_queue<T, ForEachArg>::m_bufSize;
-        m_inPos_mp.store(nextstd::memory_order_relaxed);
+        m_inPos_mp.store(next, std::memory_order_relaxed);
         m_concurrent_mp.store(m_concurrent_mp.load(std::memory_order_relaxed) + 1,
             std::memory_order_relaxed);
         std::atomic_thread_fence(std::memory_order_release);
