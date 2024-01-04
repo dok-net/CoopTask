@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define __CoopSemaphore_h
 
 #include "CoopTaskBase.h"
-#include "circular_queue/circular_queue.h"
+#include <circular_queue.h>
 
 /// A semaphore that is safe to use from CoopTasks.
 /// Only post() is safe to use from interrupt service routines,

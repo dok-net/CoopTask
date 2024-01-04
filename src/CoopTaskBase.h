@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ESP32_FREERTOS
 #endif
 
-#include "circular_queue/Delegate.h"
+#include <Delegate.h>
 #if defined(ESP8266) || defined(ESP32)
 #include <array>
 #include <memory>
@@ -46,7 +46,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #if !defined(ARDUINO) || defined(ESP8266) || defined(ESP32)
 #include <atomic>
 #else
-#include "circular_queue/ghostl.h"
+#include <ghostl.h>
 #endif
 
 #if !defined(ESP32) && !defined(ESP8266)

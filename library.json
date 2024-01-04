@@ -17,5 +17,9 @@
     ],
     "license": "LGPL-2.1+",
     "frameworks": "arduino",
-    "platforms": "*"
+    "platforms": "*",
+    "dependencies":
+    {
+        "dok-net/ghostl": "^1.0.0"
+    }
 }
